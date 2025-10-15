@@ -63,6 +63,32 @@ body {
 .login-card {
     border-radius: 12px;
     border: none;
+    width: 100%;
+    max-width: 450px; /* Ancho máximo fijo */
+    margin: 0 auto; /* Centrar horizontalmente */
+}
+
+/* Asegurar que el formulario ocupe todo el ancho */
+.login-card .card-body {
+    padding: 2rem;
+}
+
+/* Inputs del login */
+.login-card .form-control {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.login-card .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Botón del login */
+.login-card .btn {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
 }
 
 .credential-test {
@@ -106,7 +132,7 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 576px) {
     .hero-section {
         padding: 2rem 0;
     }
@@ -117,6 +143,18 @@ body {
     
     .step {
         margin-bottom: 2rem;
+    }
+
+     .login-container {
+        padding: 1rem;
+    }
+    
+    .login-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    .login-card {
+        margin: 0 1rem;
     }
 }
 
