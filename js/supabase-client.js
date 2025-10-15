@@ -5,10 +5,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Inicializar Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Función para login
+// Función para login mejorada
 async function loginUser(email, password) {
     try {
-        console.log('Intentando login con:', email);
+        console.log('🔐 Intentando login con:', email);
         
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -16,20 +16,113 @@ async function loginUser(email, password) {
         });
         
         if (error) {
-            console.error('Error en login:', error);
+            console.error('❌ Error en login:', error);
             throw error;
         }
         
-        console.log('Login exitoso:', data);
-        return { success: true, data };
+        console.log('✅ Login exitoso:', data);
+        
+        // Obtener el perfil del usuario
+        const profile = await getUserProfile(data.user.id);
+        
+        return { 
+            success: true, 
+            data: {
+                ...data,
+                profile: profile
+            }
+        };
         
     } catch (error) {
-        console.error('Error completo:', error);
+        console.error('❌ Error completo:', error);
+        return { 
+            success: false, 
+            error: error.message 
+        };
+    }
+}
+
+// Obtener perfil del usuario
+async function getUserProfile(userId) {
+    try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        
+        if (error) {
+            console.error('Error obteniendo perfil:', error);
+            return null;
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error:', error);
+        return null;
+    }
+}
+
+// Función para registrar nuevo usuario
+async function registerUser(email, password, name, userType) {
+    try {
+        const { data, error } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    name: name,
+                    user_type: userType
+                }
+            }
+        });
+        
+        if (error) throw error;
+        
+        // Crear perfil de usuario
+        if (data.user) {
+            const { error: profileError } = await supabase
+                .from('user_profiles')
+                .insert([
+                    {
+                        id: data.user.id,
+                        email: email,
+                        name: name,
+                        user_type: userType
+                    }
+                ]);
+            
+            if (profileError) throw profileError;
+        }
+        
+        return { success: true, data };
+    } catch (error) {
         return { success: false, error: error.message };
     }
 }
 
-// Función para obtener trabajos del alumno
+// Verificar sesión activa
+async function getCurrentSession() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return session;
+}
+
+// Obtener usuario actual
+async function getCurrentUser() {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    return user;
+}
+
+// Cerrar sesión
+async function logoutUser() {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    return true;
+}
+
+// Obtener trabajos del alumno (REAL)
 async function getStudentWorks(studentId) {
     try {
         const { data, error } = await supabase
@@ -46,12 +139,15 @@ async function getStudentWorks(studentId) {
     }
 }
 
-// Función para obtener trabajos para evaluación
+// Obtener trabajos para evaluación (REAL)
 async function getWorksForEvaluation() {
     try {
         const { data, error } = await supabase
             .from('works')
-            .select('*')
+            .select(`
+                *,
+                user_profiles!student_id (name, email)
+            `)
             .order('submitted_at', { ascending: false });
         
         if (error) throw error;
@@ -62,7 +158,7 @@ async function getWorksForEvaluation() {
     }
 }
 
-// Función para enviar nuevo trabajo
+// Enviar nuevo trabajo (REAL)
 async function submitWork(workData) {
     try {
         const { data, error } = await supabase
@@ -77,15 +173,17 @@ async function submitWork(workData) {
     }
 }
 
-// Verificar si el usuario está autenticado
-async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
-}
-
-// Cerrar sesión
-async function logout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error('Error cerrando sesión:', error);
-    return !error;
+// Crear evaluación (REAL)
+async function createEvaluation(evaluationData) {
+    try {
+        const { data, error } = await supabase
+            .from('evaluations')
+            .insert([evaluationData]);
+        
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error creando evaluación:', error);
+        return { success: false, error: error.message };
+    }
 }
