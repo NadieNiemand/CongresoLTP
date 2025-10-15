@@ -67,7 +67,7 @@ body {
     border-radius: 12px;
     border: none;
     width: 100%;
-    max-width: 450px; /* Ancho máximo fijo */
+    max-width: 1500px; /* Ancho máximo fijo */
     margin: 0 auto; /* Centrar horizontalmente */
 }
 
