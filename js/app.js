@@ -25,7 +25,7 @@ async function initializeApp() {
     await checkPageAuth();
 }
 
-// Manejar login
+// Manejar login REAL
 async function handleLogin(e) {
     e.preventDefault();
     
@@ -37,31 +37,49 @@ async function handleLogin(e) {
     // Mostrar loading
     loginText.textContent = 'Iniciando sesión...';
     loginSpinner.classList.remove('d-none');
+    document.querySelector('button[type="submit"]').disabled = true;
     
     try {
+        console.log('📝 Iniciando proceso de login...');
         const result = await loginUser(email, password);
         
         if (result.success) {
-            // Login exitoso - redirigir según tipo de usuario
-            const userType = determineUserType(email);
+            console.log('✅ Login exitoso, redirigiendo...');
+            loginText.textContent = '¡Éxito! Redirigiendo...';
             
+            // Determinar tipo de usuario
+            const userType = result.data.profile?.user_type || 
+                            (email.includes('profesor') ? 'evaluator' : 'student');
+            
+            // Redirigir después de un breve delay
             setTimeout(() => {
                 if (userType === 'evaluator') {
                     window.location.href = 'evaluator-dashboard.html';
                 } else {
                     window.location.href = 'student-dashboard.html';
                 }
-            }, 1000);
+            }, 1500);
             
         } else {
             throw new Error(result.error);
         }
     } catch (error) {
-        // Mostrar error
+        console.error('❌ Error en login:', error);
         loginText.textContent = 'Ingresar al Portal';
         loginSpinner.classList.add('d-none');
+        document.querySelector('button[type="submit"]').disabled = false;
         
-        alert('Error al iniciar sesión: ' + error.message);
+        // Mostrar error específico
+        let errorMessage = 'Error al iniciar sesión';
+        if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Email o contraseña incorrectos';
+        } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = 'Por favor confirma tu email primero';
+        } else {
+            errorMessage = error.message;
+        }
+        
+        alert('❌ ' + errorMessage);
     }
 }
 
