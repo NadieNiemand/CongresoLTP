@@ -55,10 +55,11 @@ body {
 
 /* Login */
 .login-container {
+max-width: 2000px; /* Ancho máximo fijo */
    min-height: calc(100vh - 200px);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: left;
     padding: 2rem 0;
 }
 
@@ -66,9 +67,10 @@ body {
 .login-card {
     border-radius: 12px;
     border: none;
-    width: 100%;
-    max-width: 1500px; /* Ancho máximo fijo */
     margin: 0 auto; /* Centrar horizontalmente */
+    width: 500%;
+    max-width: 20000px; /* Ancho máximo fijo */
+    
 }
 
 /* Asegurar que el formulario ocupe todo el ancho */
