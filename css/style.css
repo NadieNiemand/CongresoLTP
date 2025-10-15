@@ -55,11 +55,14 @@ body {
 
 /* Login */
 .login-container {
-    min-height: calc(100vh - 200px);
+   min-height: calc(100vh - 200px);
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
 }
 
+/* Tarjeta del login */
 .login-card {
     border-radius: 12px;
     border: none;
