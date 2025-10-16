@@ -187,6 +187,139 @@ async function validateInvitationCode(code) {
         .single();
     
     return { valid: !!data && !error, codeData: data };
+// Manejar el registro de usuarios CON validación de códigos
+document.addEventListener('DOMContentLoaded', function() {
+    const registerForm = document.getElementById('registerForm');
+    const userTypeSelect = document.getElementById('userType');
+    const invitationCodeField = document.getElementById('invitationCodeField');
+    
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+    
+    if (userTypeSelect && invitationCodeField) {
+        userTypeSelect.addEventListener('change', function() {
+            // Mostrar campo de código solo para evaluadores
+            invitationCodeField.style.display = this.value === 'evaluator' ? 'block' : 'none';
+            
+            // Hacer requerido o no el campo de código
+            const codeInput = document.getElementById('invitationCode');
+            if (codeInput) {
+                codeInput.required = this.value === 'evaluator';
+            }
+        });
+    }
+});
+
+async function handleRegister(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const userType = document.getElementById('userType').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const invitationCode = userType === 'evaluator' ? document.getElementById('invitationCode').value : null;
+    
+    const registerText = document.getElementById('registerText');
+    const registerSpinner = document.getElementById('registerSpinner');
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    // Validaciones básicas
+    if (password !== confirmPassword) {
+        alert('❌ Las contraseñas no coinciden');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('❌ La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    
+    if (!userType) {
+        alert('❌ Por favor selecciona un tipo de usuario');
+        return;
+    }
+    
+    // Validación especial para evaluadores
+    if (userType === 'evaluator' && (!invitationCode || invitationCode.trim() === '')) {
+        alert('❌ Los evaluadores deben proporcionar un código de invitación');
+        return;
+    }
+    
+    // Mostrar loading
+    registerText.textContent = 'Creando cuenta...';
+    registerSpinner.classList.remove('d-none');
+    submitButton.disabled = true;
+    
+    try {
+        console.log('📝 Iniciando registro...', { email, name, userType });
+        
+        // VALIDAR CÓDIGO DE INVITACIÓN PARA EVALUADORES
+        if (userType === 'evaluator') {
+            console.log('🔐 Validando código de invitación:', invitationCode);
+            const codeValidation = await validateInvitationCode(invitationCode);
+            
+            if (!codeValidation.valid) {
+                throw new Error(codeValidation.error || 'Código de invitación inválido o expirado');
+            }
+            
+            console.log('✅ Código validado correctamente');
+        }
+        
+        // Registrar usuario
+        const result = await registerUser(email, password, name, userType);
+        
+        if (result.success) {
+            // MARCAR CÓDIGO COMO USADO PARA EVALUADORES
+            if (userType === 'evaluator' && invitationCode) {
+                try {
+                    await markInvitationCodeAsUsed(invitationCode, result.data.user.id);
+                    console.log('✅ Código marcado como usado');
+                } catch (codeError) {
+                    console.error('Error marcando código como usado:', codeError);
+                    // No detenemos el registro por este error
+                }
+            }
+            
+            registerText.textContent = '¡Cuenta creada!';
+            
+            // Mostrar mensaje de éxito
+            alert('✅ Cuenta creada exitosamente. Ya puedes iniciar sesión.');
+            
+            // Redirigir al login después de 2 segundos
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
+            
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('❌ Error en registro:', error);
+        registerText.textContent = 'Crear Cuenta';
+        registerSpinner.classList.add('d-none');
+        submitButton.disabled = false;
+        
+        // Mostrar error específico
+        let errorMessage = 'Error al crear la cuenta';
+        if (error.message.includes('User already registered')) {
+            errorMessage = 'Este email ya está registrado';
+        } else if (error.message.includes('Password should be at least')) {
+            errorMessage = 'La contraseña debe tener al menos 6 caracteres';
+        } else if (error.message.includes('Invalid email')) {
+            errorMessage = 'El formato del email no es válido';
+        } else if (error.message.includes('invitation')) {
+            errorMessage = error.message;
+        } else {
+            errorMessage = error.message;
+        }
+        
+        alert('❌ ' + errorMessage);
+    }
+}
+
+
 }
 </script>
 </body>

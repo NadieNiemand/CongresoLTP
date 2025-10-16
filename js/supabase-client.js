@@ -5,7 +5,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Inicializar Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Función para login mejorada
+// Función para login MEJORADA
 async function loginUser(email, password) {
     try {
         console.log('🔐 Intentando login con:', email);
@@ -22,8 +22,15 @@ async function loginUser(email, password) {
         
         console.log('✅ Login exitoso:', data);
         
-        // Obtener el perfil del usuario
-        const profile = await getUserProfile(data.user.id);
+        // Obtener el perfil del usuario (FORZAR la obtención)
+        let profile = null;
+        try {
+            profile = await getUserProfile(data.user.id);
+            console.log('📋 Perfil obtenido:', profile);
+        } catch (profileError) {
+            console.warn('⚠️ No se pudo obtener el perfil:', profileError);
+            // Continuar sin perfil
+        }
         
         return { 
             success: true, 
@@ -41,7 +48,6 @@ async function loginUser(email, password) {
         };
     }
 }
-
 // Obtener perfil del usuario
 async function getUserProfile(userId) {
     try {
@@ -254,3 +260,104 @@ async function createEvaluation(evaluationData) {
         return { success: false, error: error.message };
     }
 }
+
+// Funciones para gestión de códigos de invitación
+
+// Validar código de invitación
+async function validateInvitationCode(code) {
+    try {
+        // Limpiar el código (quitar guiones si los tiene)
+        const cleanCode = code.replace(/-/g, '').toUpperCase();
+        
+        console.log('🔍 Validando código:', cleanCode);
+        
+        const { data, error } = await supabase
+            .from('invitation_codes')
+            .select('*')
+            .eq('code', cleanCode)
+            .eq('is_active', true)
+            .gte('expires_at', new Date().toISOString())
+            .is('used_by', null)
+            .single();
+        
+        if (error) {
+            console.error('❌ Error validando código:', error);
+            return { 
+                valid: false, 
+                error: 'Código no encontrado o ya utilizado' 
+            };
+        }
+        
+        if (!data) {
+            return { 
+                valid: false, 
+                error: 'Código inválido, expirado o ya utilizado' 
+            };
+        }
+        
+        console.log('✅ Código válido encontrado:', data);
+        return { 
+            valid: true, 
+            codeData: data 
+        };
+        
+    } catch (error) {
+        console.error('❌ Error en validateInvitationCode:', error);
+        return { 
+            valid: false, 
+            error: 'Error validando el código de invitación' 
+        };
+    }
+}
+
+// Marcar código como usado
+async function markInvitationCodeAsUsed(code, userId) {
+    try {
+        const cleanCode = code.replace(/-/g, '').toUpperCase();
+        
+        console.log('📝 Marcando código como usado:', cleanCode, 'por usuario:', userId);
+        
+        const { error } = await supabase
+            .from('invitation_codes')
+            .update({ 
+                used_by: userId,
+                used_at: new Date().toISOString()
+            })
+            .eq('code', cleanCode)
+            .eq('is_active', true)
+            .is('used_by', null);
+        
+        if (error) {
+            console.error('❌ Error marcando código como usado:', error);
+            throw error;
+        }
+        
+        console.log('✅ Código marcado como usado exitosamente');
+        return { success: true };
+        
+    } catch (error) {
+        console.error('❌ Error en markInvitationCodeAsUsed:', error);
+        throw error;
+    }
+}
+
+// Obtener códigos de invitación (para admin)
+async function getInvitationCodes() {
+    try {
+        const { data, error } = await supabase
+            .from('invitation_codes')
+            .select(`
+                *,
+                user_profiles!created_by (name),
+                used_profiles:user_profiles!used_by (name)
+            `)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error obteniendo códigos:', error);
+        return [];
+    }
+}
+
