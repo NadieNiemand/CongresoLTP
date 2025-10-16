@@ -139,7 +139,7 @@ async function getStudentWorks(studentId) {
     }
 }
 
-// Obtener trabajos para evaluación (REAL)
+// Función para obtener trabajos para evaluación (REAL)
 async function getWorksForEvaluation() {
     try {
         const { data, error } = await supabase
@@ -173,7 +173,7 @@ async function submitWork(workData) {
     }
 }
 
-// Crear evaluación (REAL)
+// Función para crear evaluación
 async function createEvaluation(evaluationData) {
     try {
         const { data, error } = await supabase
@@ -185,5 +185,21 @@ async function createEvaluation(evaluationData) {
     } catch (error) {
         console.error('Error creando evaluación:', error);
         return { success: false, error: error.message };
+    }
+}
+
+// Función para obtener evaluaciones existentes
+async function getWorkEvaluations(workId) {
+    try {
+        const { data, error } = await supabase
+            .from('evaluations')
+            .select('*')
+            .eq('work_id', workId);
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error obteniendo evaluaciones:', error);
+        return [];
     }
 }

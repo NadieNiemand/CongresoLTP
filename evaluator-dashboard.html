@@ -6,60 +6,199 @@
     <title>Panel del Evaluador - Portal Congreso</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
+    
+    <style>
+        .evaluator-container {
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+        
+        .stats-card {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .work-item-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .work-item-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        
+        .evaluation-modal {
+            max-width: 800px;
+        }
+        
+        .criteria-item {
+            padding: 1rem;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background: #fafafa;
+        }
+        
+        .rating-stars {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .star {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #ddd;
+            transition: color 0.2s ease;
+        }
+        
+        .star.active {
+            color: #ffc107;
+        }
+        
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+        }
+    </style>
 </head>
-<body>
+<body class="evaluator-container">
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="index.html">🎓 Congreso Estudiantil "Laboratorios de Ingeniería Química"</a>
+            <a class="navbar-brand fw-bold" href="index.html">
+                🎓 Congreso Estudiantil "Laboratorios de Ingeniería Química"
+            </a>
             <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">👨‍🏫 Bienvenido, Evaluador</span>
+                <span class="navbar-text me-3">👨‍🏫 Panel del Evaluador</span>
                 <a class="nav-link" href="index.html">Cerrar Sesión</a>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="container-fluid py-4">
         <div class="row">
-            <div class="col-md-12">
-                <h2 class="mb-4">Trabajos para Evaluar</h2>
+            <!-- Sidebar de Filtros -->
+            <div class="col-lg-3 mb-4">
+                <div class="filter-section">
+                    <h5 class="mb-3">🔍 Filtros</h5>
+                    
+                    <!-- Filtro por Estado -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Estado</label>
+                        <select class="form-select" id="filterStatus">
+                            <option value="all">Todos los estados</option>
+                            <option value="pending">📝 Pendientes</option>
+                            <option value="under_review">🔍 En revisión</option>
+                            <option value="accepted_oral">✅ Aceptados (Ponencia)</option>
+                            <option value="accepted_poster">✅ Aceptados (Póster)</option>
+                            <option value="rejected">❌ Rechazados</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro por Modalidad -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Modalidad</label>
+                        <select class="form-select" id="filterModality">
+                            <option value="all">Todas las modalidades</option>
+                            <option value="ponencia">🎤 Ponencia</option>
+                            <option value="poster">📊 Póster</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Filtro por Fecha -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Fecha</label>
+                        <select class="form-select" id="filterDate">
+                            <option value="all">Todas las fechas</option>
+                            <option value="today">Hoy</option>
+                            <option value="week">Esta semana</option>
+                            <option value="month">Este mes</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Búsqueda por Título -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Buscar por título</label>
+                        <input type="text" class="form-control" id="searchTitle" placeholder="Ingresa palabras clave...">
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" onclick="applyFilters()">
+                            Aplicar Filtros
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="resetFilters()">
+                            Limpiar Filtros
+                        </button>
+                    </div>
+                </div>
                 
-                <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="card bg-primary text-white">
-                            <div class="card-body text-center">
-                                <h4>12</h4>
-                                <p>Total Trabajos</p>
+                <!-- Estadísticas Rápidas -->
+                <div class="filter-section">
+                    <h5 class="mb-3">📊 Estadísticas</h5>
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stats-card bg-primary text-white p-3">
+                                <h4 id="totalWorks">0</h4>
+                                <small>Total</small>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-warning text-white">
-                            <div class="card-body text-center">
-                                <h4>5</h4>
-                                <p>Pendientes</p>
+                        <div class="col-6 mb-3">
+                            <div class="stats-card bg-warning text-white p-3">
+                                <h4 id="pendingWorks">0</h4>
+                                <small>Pendientes</small>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-success text-white">
-                            <div class="card-body text-center">
-                                <h4>7</h4>
-                                <p>Evaluados</p>
+                        <div class="col-6">
+                            <div class="stats-card bg-info text-white p-3">
+                                <h4 id="reviewedWorks">0</h4>
+                                <small>Revisados</small>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-info text-white">
-                            <div class="card-body text-center">
-                                <h4>3</h4>
-                                <p>Urgentes</p>
+                        <div class="col-6">
+                            <div class="stats-card bg-success text-white p-3">
+                                <h4 id="completedWorks">0</h4>
+                                <small>Completados</small>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Contenido Principal -->
+            <div class="col-lg-9">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="mb-0">Trabajos para Evaluar</h2>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" onclick="refreshWorks()">
+                            🔄 Actualizar
+                        </button>
+                    </div>
+                </div>
                 
+                <!-- Lista de Trabajos -->
                 <div id="worksList">
-                    <!-- Los trabajos se cargarán aquí con JavaScript -->
                     <div class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Cargando...</span>
@@ -71,8 +210,509 @@
         </div>
     </div>
 
+    <!-- Modal de Evaluación -->
+    <div class="modal fade" id="evaluationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg evaluation-modal">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Evaluar Trabajo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="evaluationContent">
+                        <!-- Contenido dinámico se cargará aquí -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js"></script>
-    <script src="js/app.js"></script>
+    <script>
+        // Variables globales
+        let allWorks = [];
+        let currentEvaluationWork = null;
+        let evaluationModal = null;
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            evaluationModal = new bootstrap.Modal(document.getElementById('evaluationModal'));
+            checkEvaluatorAuth();
+            loadEvaluatorWorks();
+        });
+
+        // Verificar autenticación del evaluador
+        async function checkEvaluatorAuth() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (!session || error) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Verificar que el usuario es evaluador
+            const user = session.user;
+            const profile = await getUserProfile(user.id);
+            if (!profile || (profile.user_type !== 'evaluator' && profile.user_type !== 'admin')) {
+                alert('No tienes permisos para acceder al panel de evaluador.');
+                window.location.href = 'student-dashboard.html';
+            }
+        }
+
+        // Cargar trabajos para evaluación
+        async function loadEvaluatorWorks() {
+            try {
+                console.log('📥 Cargando trabajos para evaluación...');
+                
+                const works = await getWorksForEvaluation();
+                console.log('📋 Trabajos encontrados:', works);
+                
+                allWorks = works;
+                updateStatistics(works);
+                displayWorks(works);
+                
+            } catch (error) {
+                console.error('❌ Error cargando trabajos:', error);
+                showError('Error cargando trabajos: ' + error.message);
+            }
+        }
+
+        // Actualizar estadísticas
+        function updateStatistics(works) {
+            const total = works.length;
+            const pending = works.filter(work => work.status === 'pending').length;
+            const reviewed = works.filter(work => work.status === 'under_review').length;
+            const completed = works.filter(work => 
+                work.status === 'accepted_oral' || 
+                work.status === 'accepted_poster' || 
+                work.status === 'rejected'
+            ).length;
+
+            document.getElementById('totalWorks').textContent = total;
+            document.getElementById('pendingWorks').textContent = pending;
+            document.getElementById('reviewedWorks').textContent = reviewed;
+            document.getElementById('completedWorks').textContent = completed;
+        }
+
+        // Mostrar trabajos en la lista
+        function displayWorks(works) {
+            const worksContainer = document.getElementById('worksList');
+            if (!worksContainer) return;
+            
+            if (!works || works.length === 0) {
+                worksContainer.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="text-muted">
+                            <p class="h3">📝</p>
+                            <p class="h5">No hay trabajos para evaluar</p>
+                            <p class="mb-0">Todos los trabajos han sido evaluados</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            worksContainer.innerHTML = works.map(work => {
+                const statusInfo = getStatusInfo(work.status);
+                const studentName = work.user_profiles ? work.user_profiles.name : 'Estudiante';
+                const daysAgo = getDaysAgo(work.submitted_at);
+                
+                return `
+                    <div class="work-item-card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h5 class="card-title text-primary">${work.title}</h5>
+                                    <p class="card-text mb-2">
+                                        <strong>Estudiante:</strong> ${studentName}<br>
+                                        <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? '🎤 Ponencia' : '📊 Póster'}<br>
+                                        <strong>Enviado:</strong> Hace ${daysAgo} días
+                                    </p>
+                                    <div class="mt-3">
+                                        <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                            📎 Ver Archivo
+                                        </a>
+                                        <button class="btn btn-sm btn-success" onclick="openEvaluation('${work.id}')">
+                                            ⭐ Evaluar
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="viewWorkDetails('${work.id}')">
+                                            👁️ Ver Detalles
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <span class="status-badge ${statusInfo.class}">
+                                        ${statusInfo.icon} ${statusInfo.text}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted mt-2 d-block">
+                                        ID: ${work.id.substring(0, 8)}...
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Información del estado
+        function getStatusInfo(status) {
+            const statusMap = {
+                'pending': { class: 'bg-warning text-dark', icon: '📝', text: 'Pendiente' },
+                'under_review': { class: 'bg-info text-white', icon: '🔍', text: 'En revisión' },
+                'accepted_oral': { class: 'bg-success text-white', icon: '✅', text: 'Ponencia' },
+                'accepted_poster': { class: 'bg-success text-white', icon: '✅', text: 'Póster' },
+                'rejected': { class: 'bg-danger text-white', icon: '❌', text: 'Rechazado' }
+            };
+            return statusMap[status] || { class: 'bg-secondary text-white', icon: '❓', text: status };
+        }
+
+        // Calcular días desde el envío
+        function getDaysAgo(dateString) {
+            const submitted = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - submitted);
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // Abrir evaluación
+        async function openEvaluation(workId) {
+            try {
+                const work = allWorks.find(w => w.id === workId);
+                if (!work) {
+                    alert('Trabajo no encontrado');
+                    return;
+                }
+                
+                currentEvaluationWork = work;
+                await showEvaluationModal(work);
+                
+            } catch (error) {
+                console.error('Error abriendo evaluación:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Mostrar modal de evaluación
+        async function showEvaluationModal(work) {
+            const studentName = work.user_profiles ? work.user_profiles.name : 'Estudiante';
+            
+            const modalContent = `
+                <div class="evaluation-header mb-4">
+                    <h4>${work.title}</h4>
+                    <p class="text-muted mb-0">
+                        <strong>Estudiante:</strong> ${studentName} | 
+                        <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? 'Ponencia' : 'Póster'}
+                    </p>
+                    <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                        📎 Abrir archivo completo
+                    </a>
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>📋 Resumen del trabajo:</strong><br>
+                    ${work.abstract.substring(0, 300)}${work.abstract.length > 300 ? '...' : ''}
+                </div>
+                
+                <form id="evaluationForm">
+                    <h5 class="mb-3">Criterios de Evaluación</h5>
+                    
+                    <!-- Originalidad -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🎯 Originalidad e Innovación</label>
+                        <p class="text-muted small mb-2">¿El trabajo presenta ideas nuevas o enfoques innovadores?</p>
+                        <div class="rating-stars" data-criteria="originality">
+                            ${generateStarRating(5, 'originality')}
+                        </div>
+                    </div>
+                    
+                    <!-- Claridad -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">📝 Claridad y Estructura</label>
+                        <p class="text-muted small mb-2">¿El trabajo está bien organizado y es fácil de entender?</p>
+                        <div class="rating-stars" data-criteria="clarity">
+                            ${generateStarRating(5, 'clarity')}
+                        </div>
+                    </div>
+                    
+                    <!-- Metodología -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🔬 Metodología</label>
+                        <p class="text-muted small mb-2">¿La metodología utilizada es apropiada y está bien descrita?</p>
+                        <div class="rating-stars" data-criteria="methodology">
+                            ${generateStarRating(5, 'methodology')}
+                        </div>
+                    </div>
+                    
+                    <!-- Relevancia -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🎯 Relevancia Académica</label>
+                        <p class="text-muted small mb-2">¿El trabajo contribuye al campo de estudio?</p>
+                        <div class="rating-stars" data-criteria="relevance">
+                            ${generateStarRating(5, 'relevance')}
+                        </div>
+                    </div>
+                    
+                    <!-- Comentarios -->
+                    <div class="mb-4">
+                        <label for="evaluationComments" class="form-label fw-semibold">💬 Comentarios y Recomendaciones</label>
+                        <textarea class="form-control" id="evaluationComments" rows="4" 
+                                  placeholder="Proporciona comentarios constructivos para el estudiante..."></textarea>
+                    </div>
+                    
+                    <!-- Recomendación Final -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">📋 Recomendación Final</label>
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="recommendation" value="ponencia" id="recPonencia">
+                                    <label class="form-check-label" for="recPonencia">
+                                        ✅ Aceptar como Ponencia
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="recommendation" value="poster" id="recPoster">
+                                    <label class="form-check-label" for="recPoster">
+                                        ✅ Aceptar como Póster
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="recommendation" value="reject" id="recReject">
+                                    <label class="form-check-label" for="recReject">
+                                        ❌ Rechazar
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            📤 Enviar Evaluación
+                        </button>
+                    </div>
+                </form>
+            `;
+            
+            document.getElementById('evaluationContent').innerHTML = modalContent;
+            
+            // Configurar eventos de las estrellas
+            setupStarRating();
+            
+            // Configurar envío del formulario
+            document.getElementById('evaluationForm').addEventListener('submit', handleEvaluationSubmit);
+            
+            evaluationModal.show();
+        }
+
+        // Generar estrellas de calificación
+        function generateStarRating(count, criteria) {
+            let stars = '';
+            for (let i = 1; i <= count; i++) {
+                stars += `<span class="star" data-value="${i}" data-criteria="${criteria}">★</span>`;
+            }
+            return stars;
+        }
+
+        // Configurar sistema de estrellas
+        function setupStarRating() {
+            document.querySelectorAll('.star').forEach(star => {
+                star.addEventListener('click', function() {
+                    const value = parseInt(this.getAttribute('data-value'));
+                    const criteria = this.getAttribute('data-criteria');
+                    
+                    // Reset all stars for this criteria
+                    const allStars = this.parentElement.querySelectorAll('.star');
+                    allStars.forEach(s => s.classList.remove('active'));
+                    
+                    // Activate stars up to clicked one
+                    for (let i = 0; i < value; i++) {
+                        allStars[i].classList.add('active');
+                    }
+                });
+            });
+        }
+
+        // Manejar envío de evaluación
+        async function handleEvaluationSubmit(e) {
+            e.preventDefault();
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Usuario no autenticado');
+                
+                // Recopilar datos de la evaluación
+                const scores = {};
+                const criteriaElements = document.querySelectorAll('.rating-stars');
+                criteriaElements.forEach(element => {
+                    const criteria = element.getAttribute('data-criteria');
+                    const activeStars = element.querySelectorAll('.star.active').length;
+                    scores[criteria] = activeStars;
+                });
+                
+                const comments = document.getElementById('evaluationComments').value;
+                const recommendation = document.querySelector('input[name="recommendation"]:checked');
+                
+                if (!recommendation) {
+                    alert('Por favor selecciona una recomendación final');
+                    return;
+                }
+                
+                // Validar que se hayan calificado todos los criterios
+                if (Object.values(scores).some(score => score === 0)) {
+                    alert('Por favor califica todos los criterios antes de enviar');
+                    return;
+                }
+                
+                // Crear objeto de evaluación
+                const evaluationData = {
+                    work_id: currentEvaluationWork.id,
+                    evaluator_id: user.id,
+                    score_originality: scores.originality,
+                    score_clarity: scores.clarity,
+                    score_methodology: scores.methodology,
+                    score_relevance: scores.relevance,
+                    total_score: ((scores.originality + scores.clarity + scores.methodology + scores.relevance) / 4).toFixed(2),
+                    comments: comments,
+                    recommendation: recommendation.value,
+                    evaluated_at: new Date().toISOString()
+                };
+                
+                console.log('📊 Enviando evaluación:', evaluationData);
+                
+                // Guardar evaluación en Supabase
+                const result = await createEvaluation(evaluationData);
+                
+                if (result.success) {
+                    // Actualizar estado del trabajo
+                    let newStatus = 'under_review';
+                    if (recommendation.value === 'ponencia') newStatus = 'accepted_oral';
+                    if (recommendation.value === 'poster') newStatus = 'accepted_poster';
+                    if (recommendation.value === 'reject') newStatus = 'rejected';
+                    
+                    await updateWorkStatus(currentEvaluationWork.id, newStatus);
+                    
+                    alert('✅ Evaluación enviada correctamente');
+                    evaluationModal.hide();
+                    await loadEvaluatorWorks(); // Recargar la lista
+                    
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error enviando evaluación:', error);
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Actualizar estado del trabajo
+        async function updateWorkStatus(workId, newStatus) {
+            const { error } = await supabase
+                .from('works')
+                .update({ status: newStatus })
+                .eq('id', workId);
+            
+            if (error) throw error;
+        }
+
+        // Ver detalles del trabajo
+        function viewWorkDetails(workId) {
+            const work = allWorks.find(w => w.id === workId);
+            if (work) {
+                alert(`Detalles del trabajo:\n\nTítulo: ${work.title}\nEstudiante: ${work.user_profiles?.name || 'N/A'}\nModalidad: ${work.modality}\nEstado: ${work.status}\nFecha: ${new Date(work.submitted_at).toLocaleDateString()}`);
+            }
+        }
+
+        // Aplicar filtros
+        function applyFilters() {
+            const statusFilter = document.getElementById('filterStatus').value;
+            const modalityFilter = document.getElementById('filterModality').value;
+            const dateFilter = document.getElementById('filterDate').value;
+            const searchText = document.getElementById('searchTitle').value.toLowerCase();
+            
+            let filteredWorks = allWorks;
+            
+            // Filtro por estado
+            if (statusFilter !== 'all') {
+                filteredWorks = filteredWorks.filter(work => work.status === statusFilter);
+            }
+            
+            // Filtro por modalidad
+            if (modalityFilter !== 'all') {
+                filteredWorks = filteredWorks.filter(work => work.modality === modalityFilter);
+            }
+            
+            // Filtro por fecha
+            if (dateFilter !== 'all') {
+                const now = new Date();
+                filteredWorks = filteredWorks.filter(work => {
+                    const workDate = new Date(work.submitted_at);
+                    switch (dateFilter) {
+                        case 'today':
+                            return workDate.toDateString() === now.toDateString();
+                        case 'week':
+                            const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+                            return workDate >= weekAgo;
+                        case 'month':
+                            const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                            return workDate >= monthAgo;
+                        default:
+                            return true;
+                    }
+                });
+            }
+            
+            // Filtro por búsqueda de texto
+            if (searchText) {
+                filteredWorks = filteredWorks.filter(work => 
+                    work.title.toLowerCase().includes(searchText)
+                );
+            }
+            
+            displayWorks(filteredWorks);
+            updateStatistics(filteredWorks);
+        }
+
+        // Resetear filtros
+        function resetFilters() {
+            document.getElementById('filterStatus').value = 'all';
+            document.getElementById('filterModality').value = 'all';
+            document.getElementById('filterDate').value = 'all';
+            document.getElementById('searchTitle').value = '';
+            displayWorks(allWorks);
+            updateStatistics(allWorks);
+        }
+
+        // Refrescar lista
+        function refreshWorks() {
+            loadEvaluatorWorks();
+        }
+
+        // Mostrar error
+        function showError(message) {
+            const worksContainer = document.getElementById('worksList');
+            if (worksContainer) {
+                worksContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> ${message}
+                        <br><small>Verifica la consola para más detalles</small>
+                    </div>
+                `;
+            }
+        }
+    </script>
 </body>
 </html>
