@@ -68,7 +68,7 @@ max-width: 2000px; /* Ancho máximo fijo */
     border-radius: 12px;
     border: none;
     margin: 0 auto; /* Centrar horizontalmente */
-    width: 100%;
+    width: 500%;
     max-width: 20000px; /* Ancho máximo fijo */
     
 }
