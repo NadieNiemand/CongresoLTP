@@ -261,23 +261,77 @@
             }
         }
 
-        // Cargar trabajos para evaluación
-        async function loadEvaluatorWorks() {
-            try {
-                console.log('📥 Cargando trabajos para evaluación...');
-                
-                const works = await getWorksForEvaluation();
-                console.log('📋 Trabajos encontrados:', works);
-                
-                allWorks = works;
-                updateStatistics(works);
-                displayWorks(works);
-                
-            } catch (error) {
-                console.error('❌ Error cargando trabajos:', error);
-                showError('Error cargando trabajos: ' + error.message);
-            }
+// Cargar trabajos para evaluación - VERSIÓN MEJORADA CON DIAGNÓSTICO
+async function loadEvaluatorWorks() {
+    try {
+        console.log('🔍 INICIANDO DIAGNÓSTICO...');
+        
+        // 1. Verificar autenticación
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            console.error('❌ Error de sesión:', sessionError);
+            throw sessionError;
         }
+        
+        if (!session) {
+            console.error('❌ No hay sesión activa');
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        console.log('✅ Sesión activa:', session.user.id);
+        
+        // 2. Verificar perfil de evaluador
+        const profile = await getUserProfile(session.user.id);
+        console.log('📋 Perfil del usuario:', profile);
+        
+        if (!profile || (profile.user_type !== 'evaluator' && profile.user_type !== 'admin')) {
+            console.error('❌ Usuario no es evaluador. Tipo:', profile?.user_type);
+            alert('No tienes permisos de evaluador. Redirigiendo...');
+            window.location.href = 'student-dashboard.html';
+            return;
+        }
+        
+        console.log('✅ Usuario confirmado como evaluador');
+        
+        // 3. Intentar cargar trabajos
+        console.log('📥 Ejecutando consulta de trabajos...');
+        const works = await getWorksForEvaluation();
+        console.log('📊 Resultado de la consulta:', works);
+        
+        if (!works || works.length === 0) {
+            console.warn('⚠️ No se encontraron trabajos. Posibles causas:');
+            console.warn('   - No hay trabajos en la base de datos');
+            console.warn('   - Problema con políticas RLS');
+            console.warn('   - Error en la consulta SQL');
+        }
+        
+        allWorks = works;
+        updateStatistics(works);
+        displayWorks(works);
+        
+        console.log('✅ Carga completada');
+        
+    } catch (error) {
+        console.error('❌ Error completo en loadEvaluatorWorks:', error);
+        showError('Error cargando trabajos: ' + error.message);
+        
+        // Mostrar información detallada del error
+        const worksContainer = document.getElementById('worksList');
+        if (worksContainer) {
+            worksContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>❌ Error al cargar trabajos</h5>
+                    <p><strong>Mensaje:</strong> ${error.message}</p>
+                    <p><strong>Acción:</strong> Verifica la consola del navegador (F12) para más detalles.</p>
+                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadEvaluatorWorks()">
+                        Reintentar
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
 
         // Actualizar estadísticas
         function updateStatistics(works) {

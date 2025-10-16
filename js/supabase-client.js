@@ -139,9 +139,24 @@ async function getStudentWorks(studentId) {
     }
 }
 
-// Función para obtener trabajos para evaluación (REAL)
+// Función MEJORADA para obtener trabajos para evaluación
 async function getWorksForEvaluation() {
     try {
+        console.log('🔍 Ejecutando consulta getWorksForEvaluation...');
+        
+        // Primero verificar que podemos acceder a la tabla
+        const { count, error: countError } = await supabase
+            .from('works')
+            .select('*', { count: 'exact', head: true });
+            
+        if (countError) {
+            console.error('❌ Error contando trabajos:', countError);
+            throw countError;
+        }
+        
+        console.log(`📊 Total de trabajos en BD: ${count}`);
+        
+        // Ahora obtener los trabajos con los datos del estudiante
         const { data, error } = await supabase
             .from('works')
             .select(`
@@ -150,11 +165,17 @@ async function getWorksForEvaluation() {
             `)
             .order('submitted_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Error en consulta detallada:', error);
+            throw error;
+        }
+        
+        console.log(`✅ Trabajos obtenidos: ${data ? data.length : 0}`);
         return data;
+        
     } catch (error) {
-        console.error('Error obteniendo trabajos para evaluación:', error);
-        return [];
+        console.error('❌ Error completo en getWorksForEvaluation:', error);
+        throw error;
     }
 }
 
