@@ -55,25 +55,44 @@
             border-radius: 8px;
             margin-bottom: 1rem;
             background: #fafafa;
+            transition: all 0.3s ease;
+            padding: 1rem;
         }
-        
-        .rating-stars {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-        }
-        
-        .star {
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #ddd;
-            transition: color 0.2s ease;
-        }
-        
-        .star.active {
-            color: #ffc107;
-        }
-        
+         .criteria-item:hover {
+    background: #f0f8ff;
+    border-color: #007bff;
+}
+
+.form-range {
+    height: 1.5rem;
+}
+
+.form-range::-webkit-slider-thumb {
+    background: #007bff;
+}
+
+.form-range::-moz-range-thumb {
+    background: #007bff;
+}
+
+.score-summary {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Scroll personalizado para el modal */
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Estilos para los badges de puntuación */
+.score-badge {
+    font-size: 0.9rem;
+    padding: 0.35rem 0.75rem;
+        }      
         .status-badge {
             font-size: 0.75rem;
             font-weight: 600;
@@ -450,228 +469,435 @@ async function loadEvaluatorWorks() {
             }
         }
 
-        // Mostrar modal de evaluación
-        async function showEvaluationModal(work) {
-            const studentName = work.user_profiles ? work.user_profiles.name : 'Estudiante';
-            
-            const modalContent = `
-                <div class="evaluation-header mb-4">
-                    <h4>${work.title}</h4>
-                    <p class="text-muted mb-0">
-                        <strong>Estudiante:</strong> ${studentName} | 
-                        <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? 'Ponencia' : 'Póster'}
-                    </p>
-                    <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                        📎 Abrir archivo completo
-                    </a>
-                </div>
-                
-                <div class="alert alert-info">
-                    <strong>📋 Resumen del trabajo:</strong><br>
-                    ${work.abstract.substring(0, 300)}${work.abstract.length > 300 ? '...' : ''}
-                </div>
-                
-                <form id="evaluationForm">
-                    <h5 class="mb-3">Criterios de Evaluación</h5>
+        // Mostrar modal de evaluación ACTUALIZADO
+async function showEvaluationModal(work) {
+    const studentName = work.user_profiles ? work.user_profiles.name : 'Estudiante';
+    
+    const modalContent = `
+        <div class="evaluation-header mb-4">
+            <h4>${work.title}</h4>
+            <p class="text-muted mb-0">
+                <strong>Estudiante:</strong> ${studentName} | 
+                <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? 'Ponencia' : 'Póster'}
+            </p>
+            <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                📎 Abrir archivo completo
+            </a>
+        </div>
+        
+        <div class="alert alert-info">
+            <strong>📋 Resumen del trabajo:</strong><br>
+            ${work.abstract.substring(0, 300)}${work.abstract.length > 300 ? '...' : ''}
+        </div>
+        
+        <form id="evaluationForm">
+            <div class="row">
+                <div class="col-md-8">
+                    <h5 class="mb-3">PARTE 1: CRITERIOS DE EVALUACIÓN (85%)</h5>
                     
-                    <!-- Originalidad -->
+                    <!-- Resumen -->
                     <div class="criteria-item">
-                        <label class="form-label fw-semibold">🎯 Originalidad e Innovación</label>
-                        <p class="text-muted small mb-2">¿El trabajo presenta ideas nuevas o enfoques innovadores?</p>
-                        <div class="rating-stars" data-criteria="originality">
-                            ${generateStarRating(5, 'originality')}
+                        <label class="form-label fw-semibold">📄 Resumen (0-10%)</label>
+                        <p class="text-muted small mb-2">Presenta la estructura del contenido del documento y de cómo desarrolló la investigación; ¿Qué se hizo?, ¿Cuál fue el resultado obtenido?</p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="resumenScore" min="0" max="10" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="resumenValue">0%</span>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Claridad -->
+                    <!-- Justificación -->
                     <div class="criteria-item">
-                        <label class="form-label fw-semibold">📝 Claridad y Estructura</label>
-                        <p class="text-muted small mb-2">¿El trabajo está bien organizado y es fácil de entender?</p>
-                        <div class="rating-stars" data-criteria="clarity">
-                            ${generateStarRating(5, 'clarity')}
+                        <label class="form-label fw-semibold">🎯 Justificación (0-10%)</label>
+                        <p class="text-muted small mb-2">1. Aborda un problema, demanda o necesidad detectada.<br>2. Expresa con claridad las ideas clave en la formulación del problema de investigación.</p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="justificacionScore" min="0" max="10" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="justificacionValue">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Objetivos -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🎯 Objetivos (0-15%)</label>
+                        <p class="text-muted small mb-2">
+                            1. Plantea un objetivo general y específicos de manera clara y concisa.<br>
+                            2. La redacción de los objetivos respeta el nivel taxonómico (Bloom).<br>
+                            3. El objetivo general se refiere a la solución del problema.<br>
+                            4. Los objetivos específicos detallan los procesos necesarios.
+                        </p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="objetivosScore" min="0" max="15" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="objetivosValue">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Introducción -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">📖 Introducción (0-10%)</label>
+                        <p class="text-muted small mb-2">
+                            1. Sustenta el desarrollo de la investigación a través de teorías.<br>
+                            2. La información presentada es congruente con los objetivos.<br>
+                            3. Sustenta la información con referencias bibliográficas.
+                        </p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="introduccionScore" min="0" max="10" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="introduccionValue">0%</span>
+                            </div>
                         </div>
                     </div>
                     
                     <!-- Metodología -->
                     <div class="criteria-item">
-                        <label class="form-label fw-semibold">🔬 Metodología</label>
-                        <p class="text-muted small mb-2">¿La metodología utilizada es apropiada y está bien descrita?</p>
-                        <div class="rating-stars" data-criteria="methodology">
-                            ${generateStarRating(5, 'methodology')}
+                        <label class="form-label fw-semibold">🔬 Metodología (0-10%)</label>
+                        <p class="text-muted small mb-2">
+                            1. Describe el material, herramientas, equipos utilizados y/o procedimientos.<br>
+                            2. El desarrollo es congruente con el contenido temático.
+                        </p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="metodologiaScore" min="0" max="10" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="metodologiaValue">0%</span>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- Relevancia -->
+                    <!-- Resultados -->
                     <div class="criteria-item">
-                        <label class="form-label fw-semibold">🎯 Relevancia Académica</label>
-                        <p class="text-muted small mb-2">¿El trabajo contribuye al campo de estudio?</p>
-                        <div class="rating-stars" data-criteria="relevance">
-                            ${generateStarRating(5, 'relevance')}
-                        </div>
-                    </div>
-                    
-                    <!-- Comentarios -->
-                    <div class="mb-4">
-                        <label for="evaluationComments" class="form-label fw-semibold">💬 Comentarios y Recomendaciones</label>
-                        <textarea class="form-control" id="evaluationComments" rows="4" 
-                                  placeholder="Proporciona comentarios constructivos para el estudiante..."></textarea>
-                    </div>
-                    
-                    <!-- Recomendación Final -->
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold">📋 Recomendación Final</label>
-                        <div class="row">
-                            <div class="col-md-4 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="recommendation" value="ponencia" id="recPonencia">
-                                    <label class="form-check-label" for="recPonencia">
-                                        ✅ Aceptar como Ponencia
-                                    </label>
-                                </div>
+                        <label class="form-label fw-semibold">📊 Resultados y análisis (0-15%)</label>
+                        <p class="text-muted small mb-2">
+                            1. Realiza el tratamiento de datos a través de métodos numéricos, gráficos o analíticos.<br>
+                            2. El análisis e interpretación de los resultados se realiza mediante una redacción clara.<br>
+                            3. Respeta el formato establecido para presentar tablas, gráficas e imágenes.
+                        </p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="resultadosScore" min="0" max="15" step="0.5" value="0">
                             </div>
-                            <div class="col-md-4 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="recommendation" value="poster" id="recPoster">
-                                    <label class="form-check-label" for="recPoster">
-                                        ✅ Aceptar como Póster
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-4 mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="recommendation" value="reject" id="recReject">
-                                    <label class="form-check-label" for="recReject">
-                                        ❌ Rechazar
-                                    </label>
-                                </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="resultadosValue">0%</span>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Botones -->
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            Cancelar
-                        </button>
-                        <button type="submit" class="btn btn-success">
-                            📤 Enviar Evaluación
-                        </button>
+                    <!-- Conclusiones -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">💡 Conclusiones (0-15%)</label>
+                        <p class="text-muted small mb-2">Analiza y reflexiona sobre los resultados obtenidos y los relaciona con el cumplimiento de los objetivos.</p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="conclusionesScore" min="0" max="15" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="conclusionesValue">0%</span>
+                            </div>
+                        </div>
                     </div>
-                </form>
-            `;
+                    
+                    <!-- Referencias -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">📚 Referencias (0-5%)</label>
+                        <p class="text-muted small mb-2">
+                            1. Utiliza bibliografía actual como: libros, documentos de ingeniería, manuales, revistas científicas.<br>
+                            2. Respeta el formato APA 7.
+                        </p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <input type="range" class="form-range" id="referenciasScore" min="0" max="5" step="0.5" value="0">
+                            </div>
+                            <div class="col-md-4">
+                                <span class="badge bg-primary fs-6" id="referenciasValue">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <h5 class="mb-3">PARTE 2: CRITERIOS COMPLEMENTARIOS (10%)</h5>
+                    
+                    <!-- Factibilidad -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🏭 Factibilidad y pertinencia (0-2%)</label>
+                        <p class="text-muted small mb-2">Integra los conceptos para el diseño, operación y evaluación de procesos químicos, biológicos o físicos.</p>
+                        <select class="form-select" id="factibilidadScore">
+                            <option value="0">0% - No cumple</option>
+                            <option value="1">1% - Parcialmente</option>
+                            <option value="2">2% - Totalmente</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Innovación -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">💡 Innovación (0-2%)</label>
+                        <p class="text-muted small mb-2">Identifica y resuelve problemas que involucran procesos de transformación física, química y biológica.</p>
+                        <select class="form-select" id="innovacionScore">
+                            <option value="0">0% - No innovador</option>
+                            <option value="1">1% - Algo innovador</option>
+                            <option value="2">2% - Muy innovador</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Integración -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🔗 Integración de conocimientos (0-2%)</label>
+                        <p class="text-muted small mb-2">Integra conocimientos adquiridos de otras asignaturas de la ciencia y/o la ingeniería.</p>
+                        <select class="form-select" id="integracionScore">
+                            <option value="0">0% - No integra</option>
+                            <option value="1">1% - Integra parcialmente</option>
+                            <option value="2">2% - Integra totalmente</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Cumplimiento -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">📋 Cumplimiento del Programa (0-2%)</label>
+                        <p class="text-muted small mb-2">Se apega y cumple con los objetivos del semestre.</p>
+                        <select class="form-select" id="cumplimientoScore">
+                            <option value="0">0% - No cumple</option>
+                            <option value="1">1% - Parcialmente</option>
+                            <option value="2">2% - Totalmente</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Ética -->
+                    <div class="criteria-item">
+                        <label class="form-label fw-semibold">🌱 Ética y valores (0-2%)</label>
+                        <p class="text-muted small mb-2">Impacta en las necesidades sociales, ambientales y económicas bajo marcos normativos.</p>
+                        <select class="form-select" id="eticaScore">
+                            <option value="0">0% - No considera</option>
+                            <option value="1">1% - Considera parcialmente</option>
+                            <option value="2">2% - Considera totalmente</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Resumen de puntuación -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">📊 Resumen de Puntuación</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <span>Parte 1:</span>
+                                <span id="parte1Total">0%</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Parte 2:</span>
+                                <span id="parte2Total">0%</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between fw-bold fs-5">
+                                <span>Total:</span>
+                                <span id="totalScore">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
-            document.getElementById('evaluationContent').innerHTML = modalContent;
+            <!-- Modalidad sugerida -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">🎭 Modalidad sugerida por el evaluador</label>
+                    <select class="form-select" id="modalidadSugerida" required>
+                        <option value="">Seleccionar modalidad...</option>
+                        <option value="ponencia">Ponencia</option>
+                        <option value="poster">Póster</option>
+                    </select>
+                </div>
+            </div>
             
-            // Configurar eventos de las estrellas
-            setupStarRating();
+            <!-- Comentarios -->
+            <div class="mt-4">
+                <label for="comentarios" class="form-label fw-semibold">💬 Comentarios del proyecto evaluado</label>
+                <textarea class="form-control" id="comentarios" rows="4" 
+                          placeholder="Proporciona comentarios detallados, sugerencias de mejora y retroalimentación para el estudiante..."></textarea>
+            </div>
             
-            // Configurar envío del formulario
-            document.getElementById('evaluationForm').addEventListener('submit', handleEvaluationSubmit);
-            
-            evaluationModal.show();
-        }
+            <!-- Botones -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+                <button type="submit" class="btn btn-success">
+                    📤 Enviar Evaluación
+                </button>
+            </div>
+        </form>
+    `;
+    
+    document.getElementById('evaluationContent').innerHTML = modalContent;
+    
+    // Configurar eventos para los sliders
+    setupScoreSliders();
+    
+    // Configurar envío del formulario
+    document.getElementById('evaluationForm').addEventListener('submit', handleEvaluationSubmit);
+    
+    evaluationModal.show();
+}
 
-        // Generar estrellas de calificación
-        function generateStarRating(count, criteria) {
-            let stars = '';
-            for (let i = 1; i <= count; i++) {
-                stars += `<span class="star" data-value="${i}" data-criteria="${criteria}">★</span>`;
-            }
-            return stars;
-        }
+// Configurar sliders de puntuación
+function setupScoreSliders() {
+    // Configurar todos los sliders de la Parte 1
+    const sliders = [
+        'resumenScore', 'justificacionScore', 'objetivosScore', 'introduccionScore',
+        'metodologiaScore', 'resultadosScore', 'conclusionesScore', 'referenciasScore'
+    ];
+    
+    sliders.forEach(sliderId => {
+        const slider = document.getElementById(sliderId);
+        const valueDisplay = document.getElementById(sliderId.replace('Score', 'Value'));
+        
+        slider.addEventListener('input', function() {
+            valueDisplay.textContent = `${this.value}%`;
+            updateTotalScore();
+        });
+    });
+    
+    // Configurar selects de la Parte 2
+    const selects = [
+        'factibilidadScore', 'innovacionScore', 'integracionScore', 
+        'cumplimientoScore', 'eticaScore'
+    ];
+    
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        select.addEventListener('change', updateTotalScore);
+    });
+}
 
-        // Configurar sistema de estrellas
-        function setupStarRating() {
-            document.querySelectorAll('.star').forEach(star => {
-                star.addEventListener('click', function() {
-                    const value = parseInt(this.getAttribute('data-value'));
-                    const criteria = this.getAttribute('data-criteria');
-                    
-                    // Reset all stars for this criteria
-                    const allStars = this.parentElement.querySelectorAll('.star');
-                    allStars.forEach(s => s.classList.remove('active'));
-                    
-                    // Activate stars up to clicked one
-                    for (let i = 0; i < value; i++) {
-                        allStars[i].classList.add('active');
-                    }
-                });
-            });
-        }
+// Actualizar puntuación total
+function updateTotalScore() {
+    // Calcular Parte 1
+    const parte1Sliders = [
+        'resumenScore', 'justificacionScore', 'objetivosScore', 'introduccionScore',
+        'metodologiaScore', 'resultadosScore', 'conclusionesScore', 'referenciasScore'
+    ];
+    
+    let parte1Total = 0;
+    parte1Sliders.forEach(sliderId => {
+        parte1Total += parseFloat(document.getElementById(sliderId).value) || 0;
+    });
+    
+    // Calcular Parte 2
+    const parte2Selects = [
+        'factibilidadScore', 'innovacionScore', 'integracionScore', 
+        'cumplimientoScore', 'eticaScore'
+    ];
+    
+    let parte2Total = 0;
+    parte2Selects.forEach(selectId => {
+        parte2Total += parseFloat(document.getElementById(selectId).value) || 0;
+    });
+    
+    // Calcular total
+    const totalScore = parte1Total + parte2Total;
+    
+    // Actualizar displays
+    document.getElementById('parte1Total').textContent = `${parte1Total.toFixed(1)}%`;
+    document.getElementById('parte2Total').textContent = `${parte2Total.toFixed(1)}%`;
+    document.getElementById('totalScore').textContent = `${totalScore.toFixed(1)}%`;
+    
+    return totalScore;
+}
 
-        // Manejar envío de evaluación
-        async function handleEvaluationSubmit(e) {
-            e.preventDefault();
+// Manejar envío de evaluación ACTUALIZADO
+async function handleEvaluationSubmit(e) {
+    e.preventDefault();
+    
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Usuario no autenticado');
+        
+        // Validar modalidad sugerida
+        const modalidadSugerida = document.getElementById('modalidadSugerida').value;
+        if (!modalidadSugerida) {
+            alert('Por favor selecciona una modalidad sugerida');
+            return;
+        }
+        
+        // Recopilar todos los scores
+        const evaluationData = {
+            work_id: currentEvaluationWork.id,
+            evaluator_id: user.id,
             
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) throw new Error('Usuario no autenticado');
-                
-                // Recopilar datos de la evaluación
-                const scores = {};
-                const criteriaElements = document.querySelectorAll('.rating-stars');
-                criteriaElements.forEach(element => {
-                    const criteria = element.getAttribute('data-criteria');
-                    const activeStars = element.querySelectorAll('.star.active').length;
-                    scores[criteria] = activeStars;
-                });
-                
-                const comments = document.getElementById('evaluationComments').value;
-                const recommendation = document.querySelector('input[name="recommendation"]:checked');
-                
-                if (!recommendation) {
-                    alert('Por favor selecciona una recomendación final');
-                    return;
-                }
-                
-                // Validar que se hayan calificado todos los criterios
-                if (Object.values(scores).some(score => score === 0)) {
-                    alert('Por favor califica todos los criterios antes de enviar');
-                    return;
-                }
-                
-                // Crear objeto de evaluación
-                const evaluationData = {
-                    work_id: currentEvaluationWork.id,
-                    evaluator_id: user.id,
-                    score_originality: scores.originality,
-                    score_clarity: scores.clarity,
-                    score_methodology: scores.methodology,
-                    score_relevance: scores.relevance,
-                    total_score: ((scores.originality + scores.clarity + scores.methodology + scores.relevance) / 4).toFixed(2),
-                    comments: comments,
-                    recommendation: recommendation.value,
-                    evaluated_at: new Date().toISOString()
-                };
-                
-                console.log('📊 Enviando evaluación:', evaluationData);
-                
-                // Guardar evaluación en Supabase
-                const result = await createEvaluation(evaluationData);
-                
-                if (result.success) {
-                    // Actualizar estado del trabajo
-                    let newStatus = 'under_review';
-                    if (recommendation.value === 'ponencia') newStatus = 'accepted_oral';
-                    if (recommendation.value === 'poster') newStatus = 'accepted_poster';
-                    if (recommendation.value === 'reject') newStatus = 'rejected';
-                    
-                    await updateWorkStatus(currentEvaluationWork.id, newStatus);
-                    
-                    alert('✅ Evaluación enviada correctamente');
-                    evaluationModal.hide();
-                    await loadEvaluatorWorks(); // Recargar la lista
-                    
-                } else {
-                    throw new Error(result.error);
-                }
-                
-            } catch (error) {
-                console.error('Error enviando evaluación:', error);
-                alert('❌ Error: ' + error.message);
-            }
+            // Parte 1
+            resumen_score: parseFloat(document.getElementById('resumenScore').value) || 0,
+            justificacion_score: parseFloat(document.getElementById('justificacionScore').value) || 0,
+            objetivos_score: parseFloat(document.getElementById('objetivosScore').value) || 0,
+            introduccion_score: parseFloat(document.getElementById('introduccionScore').value) || 0,
+            metodologia_score: parseFloat(document.getElementById('metodologiaScore').value) || 0,
+            resultados_score: parseFloat(document.getElementById('resultadosScore').value) || 0,
+            conclusiones_score: parseFloat(document.getElementById('conclusionesScore').value) || 0,
+            referencias_score: parseFloat(document.getElementById('referenciasScore').value) || 0,
+            
+            // Parte 2
+            factibilidad_score: parseFloat(document.getElementById('factibilidadScore').value) || 0,
+            innovacion_score: parseFloat(document.getElementById('innovacionScore').value) || 0,
+            integracion_score: parseFloat(document.getElementById('integracionScore').value) || 0,
+            cumplimiento_score: parseFloat(document.getElementById('cumplimientoScore').value) || 0,
+            etica_score: parseFloat(document.getElementById('eticaScore').value) || 0,
+            
+            // Totales y comentarios
+            total_score: updateTotalScore(),
+            modalidad_sugerida: modalidadSugerida,
+            comentarios: document.getElementById('comentarios').value,
+            evaluated_at: new Date().toISOString()
+        };
+        
+        console.log('📊 Enviando evaluación completa:', evaluationData);
+        
+        // Validar que se hayan calificado todos los criterios principales
+        const parte1Total = evaluationData.resumen_score + evaluationData.justificacion_score + 
+                           evaluationData.objetivos_score + evaluationData.introduccion_score +
+                           evaluationData.metodologia_score + evaluationData.resultados_score +
+                           evaluationData.conclusiones_score + evaluationData.referencias_score;
+        
+        if (parte1Total === 0) {
+            alert('Por favor califica al menos algunos criterios de la Parte 1 antes de enviar');
+            return;
         }
-
+        
+        // Guardar evaluación en Supabase
+        const result = await createEvaluation(evaluationData);
+        
+        if (result.success) {
+            // Actualizar estado del trabajo basado en la modalidad sugerida
+            let newStatus = 'under_review';
+            if (modalidadSugerida === 'ponencia') newStatus = 'accepted_oral';
+            if (modalidadSugerida === 'poster') newStatus = 'accepted_poster';
+            
+            await updateWorkStatus(currentEvaluationWork.id, newStatus);
+            
+            alert(`✅ Evaluación enviada correctamente\nPuntuación total: ${evaluationData.total_score.toFixed(1)}%`);
+            evaluationModal.hide();
+            await loadEvaluatorWorks(); // Recargar la lista
+            
+        } else {
+            throw new Error(result.error);
+        }
+        
+    } catch (error) {
+        console.error('Error enviando evaluación:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+       
         // Actualizar estado del trabajo
         async function updateWorkStatus(workId, newStatus) {
             const { error } = await supabase
