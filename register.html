@@ -48,7 +48,14 @@
                                 <label for="confirmPassword" class="form-label">Confirmar Contraseña *</label>
                                 <input type="password" class="form-control" id="confirmPassword" placeholder="••••••••" required>
                             </div>
-                            
+                            <!-- Añade este campo en el formulario de registro -->
+<div class="mb-3" id="invitationCodeField" style="display: none;">
+    <label for="invitationCode" class="form-label">Código de Invitación *</label>
+    <input type="text" class="form-control" id="invitationCode" 
+           placeholder="Ingresa el código proporcionado por el administrador">
+    <div class="form-text">Solo necesario para registrarse como evaluador</div>
+</div> 
+
                             <div class="alert alert-info">
                                 <strong>ℹ️ Información importante:</strong><br>
                                 • Los evaluadores deben ser aprobados por el comité organizador<br>
@@ -160,5 +167,27 @@
             }
         }
     </script>
+
+    <script>
+// Mostrar/ocultar campo de código según tipo de usuario
+document.getElementById('userType').addEventListener('change', function() {
+    const codeField = document.getElementById('invitationCodeField');
+    codeField.style.display = this.value === 'evaluator' ? 'block' : 'none';
+});
+
+// Validar código en el registro
+async function validateInvitationCode(code) {
+    const { data, error } = await supabase
+        .from('invitation_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .gte('expires_at', new Date().toISOString())
+        .is('used_by', null)
+        .single();
+    
+    return { valid: !!data && !error, codeData: data };
+}
+</script>
 </body>
 </html>

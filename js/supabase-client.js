@@ -215,21 +215,6 @@ async function submitWork(workData) {
     }
 }
 
-// Función para crear evaluación
-async function createEvaluation(evaluationData) {
-    try {
-        const { data, error } = await supabase
-            .from('evaluations')
-            .insert([evaluationData]);
-        
-        if (error) throw error;
-        return { success: true, data };
-    } catch (error) {
-        console.error('Error creando evaluación:', error);
-        return { success: false, error: error.message };
-    }
-}
-
 // Función para obtener evaluaciones existentes
 async function getWorkEvaluations(workId) {
     try {
@@ -243,5 +228,29 @@ async function getWorkEvaluations(workId) {
     } catch (error) {
         console.error('Error obteniendo evaluaciones:', error);
         return [];
+    }
+}
+
+
+// Función ACTUALIZADA para crear evaluación
+async function createEvaluation(evaluationData) {
+    try {
+        console.log('💾 Guardando evaluación en la base de datos...');
+        
+        const { data, error } = await supabase
+            .from('evaluations')
+            .insert([evaluationData]);
+        
+        if (error) {
+            console.error('❌ Error guardando evaluación:', error);
+            throw error;
+        }
+        
+        console.log('✅ Evaluación guardada correctamente');
+        return { success: true, data };
+        
+    } catch (error) {
+        console.error('Error creando evaluación:', error);
+        return { success: false, error: error.message };
     }
 }
