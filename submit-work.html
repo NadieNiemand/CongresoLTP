@@ -128,9 +128,9 @@
                                     <div id="fileUploadContent">
                                         <p class="h1 mb-3">📎</p>
                                         <p class="mb-2 fw-semibold">Haz clic o arrastra tu archivo aquí</p>
-                                        <p class="text-muted small">Formatos aceptados: PDF, DOC, DOCX. Tamaño máximo: 10MB</p>
+                                        <p class="text-muted small">Formatos aceptados: PDF. Tamaño máximo: 10MB</p>
                                     </div>
-                                    <input type="file" class="d-none" id="fileInput" accept=".pdf,.doc,.docx" required>
+                                    <input type="file" class="d-none" id="fileInput" accept=".pdf" required>
                                     <div id="fileName" class="mt-3"></div>
                                 </div>
                             </div>
@@ -214,11 +214,11 @@
         // Función para manejar la selección de archivo
         function handleFileSelection(file) {
             // Validar tipo de archivo
-            const allowedTypes = ['.pdf', '.doc', '.docx'];
+            const allowedTypes = ['.pdf'];
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
             
             if (!allowedTypes.includes(fileExtension)) {
-                alert('❌ Tipo de archivo no permitido. Solo se aceptan PDF, DOC y DOCX.');
+                alert('❌ Tipo de archivo no permitido. Solo se aceptan PDF.');
                 resetFileInput();
                 return;
             }
@@ -299,7 +299,7 @@
                     student_id: user.id,
                     title: document.getElementById('title').value,
                     abstract: document.getElementById('abstract').value,
-                    modality: document.getElementById('modality').value,
+                    
                     file_url: publicUrl,
                     status: 'pending',
                     submitted_at: new Date().toISOString()
