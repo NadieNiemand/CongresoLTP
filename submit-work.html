@@ -112,7 +112,7 @@
                             </div>
                             
                             <!-- Modalidad -->
-                            <!--div class="mb-4">
+                            <div class="mb-4">
                                 <label for="modality" class="form-label fw-semibold">Modalidad Preferida *</label>
                                 <select class="form-select form-select-lg" id="modality" name="modality" required>
                                     <option value="">Selecciona una modalidad</option>
@@ -140,7 +140,7 @@
                                 <strong>📝 Información importante:</strong><br>
                                 • El comité evaluador revisará tu trabajo y determinará la modalidad final<br>
                                 • Recibirás una notificación cuando tu trabajo sea evaluado<br>
-                                • Puedes enviar múltiples trabajos
+                                • La modalidad preferida queda a criterio del comité evaluador.
                             </div>
                             
                             <!-- Botones -->
@@ -299,7 +299,7 @@
                     student_id: user.id,
                     title: document.getElementById('title').value,
                     abstract: document.getElementById('abstract').value,
-                    
+                    modality: document.getElementById('modality').value,
                     file_url: publicUrl,
                     status: 'pending',
                     submitted_at: new Date().toISOString()
