@@ -140,38 +140,59 @@ async function getStudentWorks(studentId) {
 }
 
 // Función MEJORADA para obtener trabajos para evaluación
+// Función CORREGIDA para obtener trabajos para evaluación
 async function getWorksForEvaluation() {
     try {
-        console.log('🔍 Ejecutando consulta getWorksForEvaluation...');
+        console.log('🔍 Ejecutando consulta CORREGIDA...');
         
-        // Primero verificar que podemos acceder a la tabla
-        const { count, error: countError } = await supabase
+        // PRIMERO: Probar una consulta simple sin relaciones
+        const { data: simpleData, error: simpleError } = await supabase
             .from('works')
-            .select('*', { count: 'exact', head: true });
-            
-        if (countError) {
-            console.error('❌ Error contando trabajos:', countError);
-            throw countError;
-        }
-        
-        console.log(`📊 Total de trabajos en BD: ${count}`);
-        
-        // Ahora obtener los trabajos con los datos del estudiante
-        const { data, error } = await supabase
-            .from('works')
-            .select(`
-                *,
-                user_profiles!student_id (name, email)
-            `)
+            .select('*')
             .order('submitted_at', { ascending: false });
-        
-        if (error) {
-            console.error('❌ Error en consulta detallada:', error);
-            throw error;
+            
+        if (simpleError) {
+            console.error('❌ Error en consulta simple:', simpleError);
+            throw simpleError;
         }
         
-        console.log(`✅ Trabajos obtenidos: ${data ? data.length : 0}`);
-        return data;
+        console.log('✅ Consulta simple exitosa. Trabajos:', simpleData);
+        
+        // Si hay trabajos, obtener los nombres de los estudiantes por separado
+        if (simpleData && simpleData.length > 0) {
+            console.log('🔄 Obteniendo información de estudiantes...');
+            
+            // Obtener todos los student_ids únicos
+            const studentIds = [...new Set(simpleData.map(work => work.student_id))];
+            
+            // Consultar los perfiles de los estudiantes
+            const { data: studentProfiles, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('id, name, email')
+                .in('id', studentIds);
+                
+            if (profileError) {
+                console.error('❌ Error obteniendo perfiles:', profileError);
+                // Continuar sin los nombres de estudiantes
+            }
+            
+            // Combinar los datos
+            const worksWithStudents = simpleData.map(work => {
+                const studentProfile = studentProfiles?.find(profile => profile.id === work.student_id);
+                return {
+                    ...work,
+                    user_profiles: studentProfile ? {
+                        name: studentProfile.name,
+                        email: studentProfile.email
+                    } : null
+                };
+            });
+            
+            console.log('✅ Datos combinados exitosamente');
+            return worksWithStudents;
+        }
+        
+        return simpleData || [];
         
     } catch (error) {
         console.error('❌ Error completo en getWorksForEvaluation:', error);
