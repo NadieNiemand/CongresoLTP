@@ -5,7 +5,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Inicializar Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Función para login mejorada
+// Verificar autenticación
+async function checkAuth() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return session;
+}
+
+// Función mejorada de login
 async function loginUser(email, password) {
     try {
         console.log('🔐 Intentando login con:', email);
@@ -15,14 +22,9 @@ async function loginUser(email, password) {
             password: password
         });
         
-        if (error) {
-            console.error('❌ Error en login:', error);
-            throw error;
-        }
+        if (error) throw error;
         
-        console.log('✅ Login exitoso:', data);
-        
-        // Obtener el perfil del usuario
+        // Obtener perfil del usuario
         const profile = await getUserProfile(data.user.id);
         
         return { 
@@ -34,7 +36,7 @@ async function loginUser(email, password) {
         };
         
     } catch (error) {
-        console.error('❌ Error completo:', error);
+        console.error('❌ Error en login:', error);
         return { 
             success: false, 
             error: error.message 
@@ -51,9 +53,8 @@ async function getUserProfile(userId) {
             .eq('id', userId)
             .single();
         
-        if (error) {
+        if (error && error.code !== 'PGRST116') {
             console.error('Error obteniendo perfil:', error);
-            return null;
         }
         
         return data;
@@ -63,9 +64,11 @@ async function getUserProfile(userId) {
     }
 }
 
-// Función para registrar nuevo usuario
+// Función mejorada para registrar usuario
 async function registerUser(email, password, name, userType) {
     try {
+        console.log('📝 Registrando usuario:', { email, name, userType });
+        
         const { data, error } = await supabase.auth.signUp({
             email: email,
             password: password,
@@ -79,7 +82,9 @@ async function registerUser(email, password, name, userType) {
         
         if (error) throw error;
         
-        // Crear perfil de usuario
+        console.log('✅ Usuario registrado en auth:', data.user?.id);
+        
+        // Crear perfil de usuario en la tabla user_profiles
         if (data.user) {
             const { error: profileError } = await supabase
                 .from('user_profiles')
@@ -88,15 +93,24 @@ async function registerUser(email, password, name, userType) {
                         id: data.user.id,
                         email: email,
                         name: name,
-                        user_type: userType
+                        user_type: userType,
+                        created_at: new Date().toISOString()
                     }
                 ]);
             
-            if (profileError) throw profileError;
+            if (profileError) {
+                console.error('❌ Error creando perfil:', profileError);
+                // Si hay error creando el perfil, eliminamos el usuario de auth
+                await supabase.auth.admin.deleteUser(data.user.id);
+                throw profileError;
+            }
+            
+            console.log('✅ Perfil de usuario creado exitosamente');
         }
         
         return { success: true, data };
     } catch (error) {
+        console.error('❌ Error completo en registro:', error);
         return { success: false, error: error.message };
     }
 }
@@ -117,12 +131,16 @@ async function getCurrentUser() {
 
 // Cerrar sesión
 async function logoutUser() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    return true;
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error cerrando sesión:', error);
+        throw error;
+    }
 }
-
-// Obtener trabajos del alumno (REAL)
+// Obtener trabajos del alumno
 async function getStudentWorks(studentId) {
     try {
         const { data, error } = await supabase
@@ -132,73 +150,55 @@ async function getStudentWorks(studentId) {
             .order('submitted_at', { ascending: false });
         
         if (error) throw error;
-        return data;
+        return data || [];
     } catch (error) {
         console.error('Error obteniendo trabajos:', error);
         return [];
     }
 }
 
+
 // Función MEJORADA para obtener trabajos para evaluación
-// Función CORREGIDA para obtener trabajos para evaluación
 async function getWorksForEvaluation() {
     try {
-        console.log('🔍 Ejecutando consulta CORREGIDA...');
+        console.log('🔍 Ejecutando consulta para evaluación...');
         
-        // PRIMERO: Probar una consulta simple sin relaciones
-        const { data: simpleData, error: simpleError } = await supabase
+        // Consulta con join para obtener información del estudiante
+        const { data, error } = await supabase
             .from('works')
-            .select('*')
+            .select(`
+                *,
+                user_profiles (
+                    name,
+                    email
+                )
+            `)
             .order('submitted_at', { ascending: false });
-            
-        if (simpleError) {
-            console.error('❌ Error en consulta simple:', simpleError);
-            throw simpleError;
-        }
         
-        console.log('✅ Consulta simple exitosa. Trabajos:', simpleData);
-        
-        // Si hay trabajos, obtener los nombres de los estudiantes por separado
-        if (simpleData && simpleData.length > 0) {
-            console.log('🔄 Obteniendo información de estudiantes...');
+        if (error) {
+            console.error('❌ Error en consulta:', error);
             
-            // Obtener todos los student_ids únicos
-            const studentIds = [...new Set(simpleData.map(work => work.student_id))];
-            
-            // Consultar los perfiles de los estudiantes
-            const { data: studentProfiles, error: profileError } = await supabase
-                .from('user_profiles')
-                .select('id, name, email')
-                .in('id', studentIds);
+            // Fallback: consulta simple sin relaciones
+            console.log('🔄 Intentando consulta simple...');
+            const { data: simpleData, error: simpleError } = await supabase
+                .from('works')
+                .select('*')
+                .order('submitted_at', { ascending: false });
                 
-            if (profileError) {
-                console.error('❌ Error obteniendo perfiles:', profileError);
-                // Continuar sin los nombres de estudiantes
-            }
+            if (simpleError) throw simpleError;
             
-            // Combinar los datos
-            const worksWithStudents = simpleData.map(work => {
-                const studentProfile = studentProfiles?.find(profile => profile.id === work.student_id);
-                return {
-                    ...work,
-                    user_profiles: studentProfile ? {
-                        name: studentProfile.name,
-                        email: studentProfile.email
-                    } : null
-                };
-            });
-            
-            console.log('✅ Datos combinados exitosamente');
-            return worksWithStudents;
+            return simpleData || [];
         }
         
-        return simpleData || [];
+        console.log(`✅ ${data?.length || 0} trabajos encontrados`);
+        return data || [];
         
     } catch (error) {
         console.error('❌ Error completo en getWorksForEvaluation:', error);
         throw error;
     }
 }
+
 
 // Enviar nuevo trabajo (REAL)
 async function submitWork(workData) {
@@ -215,17 +215,22 @@ async function submitWork(workData) {
     }
 }
 
-// Función para crear evaluación
+// Crear evaluación
 async function createEvaluation(evaluationData) {
     try {
+        console.log('📊 Creando evaluación:', evaluationData);
+        
         const { data, error } = await supabase
             .from('evaluations')
-            .insert([evaluationData]);
+            .insert([evaluationData])
+            .select();
         
         if (error) throw error;
+        
+        console.log('✅ Evaluación creada exitosamente');
         return { success: true, data };
     } catch (error) {
-        console.error('Error creando evaluación:', error);
+        console.error('❌ Error creando evaluación:', error);
         return { success: false, error: error.message };
     }
 }
@@ -245,3 +250,49 @@ async function getWorkEvaluations(workId) {
         return [];
     }
 }
+
+// Actualizar estado del trabajo
+async function updateWorkStatus(workId, status) {
+    try {
+        const { error } = await supabase
+            .from('works')
+            .update({ 
+                status: status,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', workId);
+        
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Error actualizando trabajo:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Verificar si el usuario es evaluador
+async function isUserEvaluator(userId) {
+    try {
+        const profile = await getUserProfile(userId);
+        return profile && (profile.user_type === 'evaluator' || profile.user_type === 'admin');
+    } catch (error) {
+        console.error('Error verificando rol:', error);
+        return false;
+    }
+}
+
+// Exportar funciones para uso global
+window.supabaseClient = {
+    supabase,
+    loginUser,
+    registerUser,
+    getCurrentUser,
+    logoutUser,
+    checkAuth,
+    getUserProfile,
+    getStudentWorks,
+    getWorksForEvaluation,
+    createEvaluation,
+    updateWorkStatus,
+    isUserEvaluator
+};

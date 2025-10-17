@@ -4,28 +4,28 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initializeApp() {
+    console.log('🚀 Inicializando aplicación...');
+    
     // Manejar formulario de login
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
     }
 
-    // Cargar contenido específico de cada página
-    const path = window.location.pathname;
-    
-    if (path.includes('student-dashboard')) {
-        await loadStudentDashboard();
-    } else if (path.includes('evaluator-dashboard')) {
-        await loadEvaluatorDashboard();
-    } else if (path.includes('submit-work')) {
-        setupSubmitForm();
+    // Manejar formulario de registro
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
     }
 
     // Verificar autenticación en páginas protegidas
     await checkPageAuth();
+    
+    // Cargar contenido específico de cada página
+    await loadPageSpecificContent();
 }
 
-// Manejar login REAL
+// Manejar login
 async function handleLogin(e) {
     e.preventDefault();
     
@@ -33,127 +33,351 @@ async function handleLogin(e) {
     const password = document.getElementById('password').value;
     const loginText = document.getElementById('loginText');
     const loginSpinner = document.getElementById('loginSpinner');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    
+    // Validaciones básicas
+    if (!email || !password) {
+        alert('❌ Por favor completa todos los campos');
+        return;
+    }
     
     // Mostrar loading
     loginText.textContent = 'Iniciando sesión...';
     loginSpinner.classList.remove('d-none');
-    document.querySelector('button[type="submit"]').disabled = true;
+    submitBtn.disabled = true;
     
     try {
-        console.log('📝 Iniciando proceso de login...');
-        const result = await loginUser(email, password);
+        const result = await window.supabaseClient.loginUser(email, password);
         
         if (result.success) {
-            console.log('✅ Login exitoso, redirigiendo...');
             loginText.textContent = '¡Éxito! Redirigiendo...';
             
-            // Determinar tipo de usuario
+            // Determinar redirección basada en el tipo de usuario
             const userType = result.data.profile?.user_type || 
-                            (email.includes('profesor') ? 'evaluator' : 'student');
+                           determineUserType(email);
             
-            // Redirigir después de un breve delay
             setTimeout(() => {
-                if (userType === 'evaluator') {
+                if (userType === 'evaluator' || userType === 'admin') {
                     window.location.href = 'evaluator-dashboard.html';
                 } else {
                     window.location.href = 'student-dashboard.html';
                 }
-            }, 1500);
+            }, 1000);
             
         } else {
             throw new Error(result.error);
         }
     } catch (error) {
         console.error('❌ Error en login:', error);
-        loginText.textContent = 'Ingresar al Portal';
-        loginSpinner.classList.add('d-none');
-        document.querySelector('button[type="submit"]').disabled = false;
-        
-        // Mostrar error específico
-        let errorMessage = 'Error al iniciar sesión';
-        if (error.message.includes('Invalid login credentials')) {
-            errorMessage = 'Email o contraseña incorrectos';
-        } else if (error.message.includes('Email not confirmed')) {
-            errorMessage = 'Por favor confirma tu email primero';
-        } else {
-            errorMessage = error.message;
-        }
-        
-        alert('❌ ' + errorMessage);
+        resetLoginButton(loginText, loginSpinner, submitBtn);
+        showLoginError(error);
     }
 }
 
-// Determinar tipo de usuario por email (simulación)
+// Manejar registro
+async function handleRegister(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const userType = document.getElementById('userType').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    const registerText = document.getElementById('registerText');
+    const registerSpinner = document.getElementById('registerSpinner');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    
+    // Validaciones
+    if (password !== confirmPassword) {
+        alert('❌ Las contraseñas no coinciden');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('❌ La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    
+    if (!userType) {
+        alert('❌ Por favor selecciona un tipo de usuario');
+        return;
+    }
+    
+    // Mostrar loading
+    registerText.textContent = 'Creando cuenta...';
+    registerSpinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+    
+    try {
+        const result = await window.supabaseClient.registerUser(email, password, name, userType);
+        
+        if (result.success) {
+            registerText.textContent = '¡Cuenta creada!';
+            
+            alert('✅ Cuenta creada exitosamente. Ya puedes iniciar sesión.');
+            
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
+            
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('❌ Error en registro:', error);
+        resetRegisterButton(registerText, registerSpinner, submitBtn);
+        showRegisterError(error);
+    }
+}
+
+// Determinar tipo de usuario por email
 function determineUserType(email) {
-    if (email.includes('profesor') || email.includes('evaluador') || email.includes('comite')) {
+    if (email.includes('profesor') || email.includes('evaluador') || 
+        email.includes('comite') || email.includes('admin')) {
         return 'evaluator';
     }
     return 'student';
 }
-
-// Cargar dashboard del alumno
+// Cargar dashboard del estudiante
 async function loadStudentDashboard() {
-    // Por ahora usamos datos de ejemplo
-    const works = [
-        {
-            id: 1,
-            title: "Investigación sobre Inteligencia Artificial en Educación",
-            status: "En revisión",
-            date: "2024-01-15",
-            modality: "Ponencia",
-            filename: "tesis_IA_educacion.pdf",
-            score: null
-        },
-        {
-            id: 2,
-            title: "Análisis de Datos Educativos con Machine Learning", 
-            status: "Aceptado",
-            date: "2024-01-10",
-            modality: "Póster",
-            filename: "analisis_datos_ML.pdf",
-            score: 92
-        },
-        {
-            id: 3,
-            title: "Estudio de Caso: Métodos de Enseñanza Innovadores",
-            status: "Pendiente",
-            date: "2024-01-08", 
-            modality: "Ponencia",
-            filename: "estudio_caso_ensenianza.pdf",
-            score: null
-        }
-    ];
-    
-    displayWorks(works, 'student');
+    try {
+        const user = await window.supabaseClient.getCurrentUser();
+        if (!user) return;
+        
+        const works = await window.supabaseClient.getStudentWorks(user.id);
+        displayStudentWorks(works);
+    } catch (error) {
+        console.error('Error cargando dashboard estudiante:', error);
+        showError('worksList', 'Error cargando trabajos: ' + error.message);
+    }
 }
 
-// Cargar dashboard del evaluador  
+// Cargar dashboard del evaluador
 async function loadEvaluatorDashboard() {
-    const works = [
-        {
-            id: 1,
-            title: "Investigación sobre Inteligencia Artificial en Educación",
-            student: "Juan Pérez",
-            status: "En revisión", 
-            date: "2024-01-15",
-            modality: "Ponencia",
-            filename: "tesis_IA_educacion.pdf",
-            evaluations: 1
-        },
-        {
-            id: 2,
-            title: "Análisis de Datos Educativos con Machine Learning",
-            student: "María García", 
-            status: "Pendiente",
-            date: "2024-01-10",
-            modality: "Póster", 
-            filename: "analisis_datos_ML.pdf",
-            evaluations: 0
-        }
-    ];
-    
-    displayWorks(works, 'evaluator');
+    try {
+        const works = await window.supabaseClient.getWorksForEvaluation();
+        displayEvaluatorWorks(works);
+        updateStatistics(works);
+    } catch (error) {
+        console.error('Error cargando dashboard evaluador:', error);
+        showError('worksList', 'Error cargando trabajos: ' + error.message);
+    }
 }
+
+// Mostrar trabajos del estudiante
+function displayStudentWorks(works) {
+    const container = document.getElementById('worksList');
+    if (!container) return;
+    
+    if (!works || works.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <p class="h3">📝</p>
+                    <p class="h5">No hay trabajos enviados</p>
+                    <p class="mb-0">Envía tu primer trabajo usando el botón "Nuevo Trabajo"</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = works.map(work => {
+        const statusInfo = getStatusInfo(work.status);
+        const daysAgo = getDaysAgo(work.submitted_at);
+        
+        return `
+            <div class="card work-item-card mb-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="card-title text-primary">${work.title}</h5>
+                            <p class="card-text mb-2">
+                                <strong>Estado:</strong> <span class="badge ${statusInfo.class}">${statusInfo.icon} ${statusInfo.text}</span><br>
+                                <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? '🎤 Ponencia' : '📊 Póster'}<br>
+                                <strong>Enviado:</strong> Hace ${daysAgo} días
+                            </p>
+                            <div class="mt-3">
+                                <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                    📎 Ver Archivo
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <small class="text-muted">
+                                ID: ${work.id.substring(0, 8)}...
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Información del estado
+function getStatusInfo(status) {
+    const statusMap = {
+        'pending': { class: 'bg-warning text-dark', icon: '📝', text: 'Pendiente' },
+        'under_review': { class: 'bg-info text-white', icon: '🔍', text: 'En revisión' },
+        'accepted_oral': { class: 'bg-success text-white', icon: '✅', text: 'Ponencia' },
+        'accepted_poster': { class: 'bg-success text-white', icon: '✅', text: 'Póster' },
+        'rejected': { class: 'bg-danger text-white', icon: '❌', text: 'Rechazado' }
+    };
+    return statusMap[status] || { class: 'bg-secondary text-white', icon: '❓', text: status };
+}
+
+// Calcular días desde el envío
+function getDaysAgo(dateString) {
+    const submitted = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - submitted);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// Mostrar trabajos para evaluador
+function displayEvaluatorWorks(works) {
+    const container = document.getElementById('worksList');
+    if (!container) return;
+    
+    if (!works || works.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <p class="h3">📝</p>
+                    <p class="h5">No hay trabajos para evaluar</p>
+                    <p class="mb-0">Todos los trabajos han sido evaluados</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = works.map(work => {
+        const statusInfo = getStatusInfo(work.status);
+        const studentName = work.user_profiles ? work.user_profiles.name : 'Estudiante';
+        const daysAgo = getDaysAgo(work.submitted_at);
+        
+        return `
+            <div class="card work-item-card mb-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="card-title text-primary">${work.title}</h5>
+                            <p class="card-text mb-2">
+                                <strong>Estudiante:</strong> ${studentName}<br>
+                                <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? '🎤 Ponencia' : '📊 Póster'}<br>
+                                <strong>Enviado:</strong> Hace ${daysAgo} días
+                            </p>
+                            <div class="mt-3">
+                                <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                    📎 Ver Archivo
+                                </a>
+                                <button class="btn btn-sm btn-success" onclick="openEvaluation('${work.id}')">
+                                    ⭐ Evaluar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge ${statusInfo.class}">${statusInfo.icon} ${statusInfo.text}</span>
+                            <br>
+                            <small class="text-muted mt-2 d-block">
+                                ID: ${work.id.substring(0, 8)}...
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Actualizar estadísticas
+function updateStatistics(works) {
+    const total = works.length;
+    const pending = works.filter(work => work.status === 'pending').length;
+    const reviewed = works.filter(work => work.status === 'under_review').length;
+    const completed = works.filter(work => 
+        work.status === 'accepted_oral' || 
+        work.status === 'accepted_poster' || 
+        work.status === 'rejected'
+    ).length;
+
+    document.getElementById('totalWorks').textContent = total;
+    document.getElementById('pendingWorks').textContent = pending;
+    document.getElementById('reviewedWorks').textContent = reviewed;
+    document.getElementById('completedWorks').textContent = completed;
+}
+
+// Funciones auxiliares
+function resetLoginButton(textElement, spinnerElement, buttonElement) {
+    textElement.textContent = 'Ingresar al Portal';
+    spinnerElement.classList.add('d-none');
+    buttonElement.disabled = false;
+}
+
+function resetRegisterButton(textElement, spinnerElement, buttonElement) {
+    textElement.textContent = 'Crear Cuenta';
+    spinnerElement.classList.add('d-none');
+    buttonElement.disabled = false;
+}
+
+function showLoginError(error) {
+    let message = 'Error al iniciar sesión';
+    if (error.message.includes('Invalid login credentials')) {
+        message = 'Email o contraseña incorrectos';
+    } else if (error.message.includes('Email not confirmed')) {
+        message = 'Por favor confirma tu email primero';
+    } else {
+        message = error.message;
+    }
+    alert('❌ ' + message);
+}
+
+function showRegisterError(error) {
+    let message = 'Error al crear la cuenta';
+    if (error.message.includes('User already registered')) {
+        message = 'Este email ya está registrado';
+    } else if (error.message.includes('Password should be at least')) {
+        message = 'La contraseña debe tener al menos 6 caracteres';
+    } else if (error.message.includes('Invalid email')) {
+        message = 'El formato del email no es válido';
+    } else {
+        message = error.message;
+    }
+    alert('❌ ' + message);
+}
+
+function showError(containerId, message) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Error:</strong> ${message}
+            </div>
+        `;
+    }
+}
+
+// Funciones globales
+window.openEvaluation = function(workId) {
+    // Esta función se implementa en evaluator-dashboard.html
+    console.log('Abrir evaluación para trabajo:', workId);
+    alert('Funcionalidad de evaluación - Ver evaluator-dashboard.html para implementación completa');
+};
+
+// Hacer funciones disponibles globalmente
+window.supabaseApp = {
+    initializeApp,
+    handleLogin,
+    handleRegister,
+    loadStudentDashboard,
+    loadEvaluatorDashboard,
+    displayStudentWorks,
+    displayEvaluatorWorks,
+    updateStatistics
+};
 
 // Mostrar trabajos en la lista
 function displayWorks(works, userType) {
@@ -248,14 +472,44 @@ async function checkPageAuth() {
     const isProtected = protectedPages.some(page => currentPage.includes(page));
     
     if (isProtected) {
-        const session = await checkAuth();
-        if (!session) {
-            // Simulación - en producción redirigiría a login
-            console.log('No autenticado, redirigiendo...');
+        try {
+            const session = await window.supabaseClient.checkAuth();
+            if (!session) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            // Verificación adicional para páginas de evaluador
+            if (currentPage.includes('evaluator-dashboard')) {
+                const isEvaluator = await window.supabaseClient.isUserEvaluator(session.user.id);
+                if (!isEvaluator) {
+                    alert('❌ No tienes permisos para acceder al panel de evaluador');
+                    window.location.href = 'student-dashboard.html';
+                    return false;
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error verificando autenticación:', error);
+            window.location.href = 'login.html';
+            return false;
         }
     }
+    
+    return true;
 }
 
+// Cargar contenido específico de página
+async function loadPageSpecificContent() {
+    const path = window.location.pathname;
+    
+    if (path.includes('student-dashboard')) {
+        await loadStudentDashboard();
+    } else if (path.includes('evaluator-dashboard')) {
+        await loadEvaluatorDashboard();
+    }
+}
 // Función para evaluar trabajo (simulación)
 function evaluateWork(workId) {
     alert(`Evaluando trabajo ID: ${workId} - Esta funcionalidad se implementará después`);
