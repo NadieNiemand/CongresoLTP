@@ -464,37 +464,27 @@ async function assignAllPendingWorks() {
         }
         
         // Cerrar modal y mostrar resultados
-        progressModal.hide();
-        
-        // VERIFICACIÓN FINAL: Comprobar en la base de datos
-        const { data: finalAssignments } = await supabase
-            .from('evaluation_assignments')
-            .select('id')
-            .not('id', 'is', null);
-            
-        const { data: updatedWorks } = await supabase
-            .from('works')
-            .select('id, status')
-            .in('id', pendingWorks.map(w => w.id));
-        
-        const actuallyAssigned = updatedWorks?.filter(w => w.status === 'under_review').length || 0;
-        
-        if (actuallyAssigned > 0) {
-            alert(`✅ ¡Éxito! Se asignaron ${actuallyAssigned} trabajos a los evaluadores.`);
-        } else if (errorCount === 0) {
-            alert(`✅ No había trabajos pendientes para asignar.`);
-        } else {
-            alert(`⚠️ Se intentaron asignar ${pendingWorks.length} trabajos. ${assignedCount} exitosos, ${errorCount} errores.`);
-        }
-        
-        // Recargar datos
-        await loadAdminDashboard();
-        
-    } catch (error) {
-        console.error('❌ Error en asignación masiva:', error);
-        progressModal.hide();
-        alert('❌ Error durante la asignación: ' + error.message);
-    }
+// En la parte final de assignAllPendingWorks, reemplaza el alert con:
+progressModal.hide();
+
+// Verificación final del estado real
+await checkRealAssignmentStatus();
+
+const { data: currentWorks } = await supabase
+    .from('works')
+    .select('status')
+    .in('status', ['under_review', 'pending']);
+
+const currentlyUnderReview = currentWorks?.filter(w => w.status === 'under_review').length || 0;
+const currentlyPending = currentWorks?.filter(w => w.status === 'pending').length || 0;
+
+if (currentlyUnderReview > 0) {
+    alert(`✅ ¡Éxito! ${currentlyUnderReview} trabajos están ahora en revisión. ${currentlyPending} siguen pendientes.`);
+} else if (assignedCount > 0) {
+    alert(`✅ Se procesaron ${assignedCount} trabajos. Algunos pueden estar en revisión.`);
+} else {
+    alert(`ℹ️ No se pudieron asignar trabajos. Verifica que existan evaluadores activos.`);
+}
 }
         
         // Reasignar todos los trabajos
