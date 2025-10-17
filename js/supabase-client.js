@@ -44,22 +44,73 @@ async function loginUser(email, password) {
     }
 }
 
-// Obtener perfil del usuario
+// Obtener perfil del usuario - VERSIÓN MEJORADA
 async function getUserProfile(userId) {
     try {
+        console.log('🔍 Obteniendo perfil para usuario:', userId);
+        
         const { data, error } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', userId)
             .single();
         
-        if (error && error.code !== 'PGRST116') {
-            console.error('Error obteniendo perfil:', error);
+        if (error) {
+            console.error('❌ Error obteniendo perfil:', error);
+            
+            // Si es error de "no encontrado", podríamos crear el perfil automáticamente
+            if (error.code === 'PGRST116') {
+                console.log('⚠️ Perfil no encontrado, intentando crear uno...');
+                return await createUserProfileFromAuth(userId);
+            }
+            
+            return null;
         }
         
+        console.log('✅ Perfil obtenido:', data);
         return data;
+        
     } catch (error) {
-        console.error('Error:', error);
+        console.error('❌ Error en getUserProfile:', error);
+        return null;
+    }
+}
+
+// Función auxiliar para crear perfil si no existe
+async function createUserProfileFromAuth(userId) {
+    try {
+        // Obtener información del usuario desde Auth
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) throw error;
+        
+        const userData = user.user_metadata;
+        
+        console.log('📝 Creando perfil automáticamente para:', user.email);
+        
+        const { data: newProfile, error: insertError } = await supabase
+            .from('user_profiles')
+            .insert([
+                {
+                    id: userId,
+                    email: user.email,
+                    name: userData.name || user.email.split('@')[0],
+                    user_type: userData.user_type || 'student',
+                    created_at: new Date().toISOString()
+                }
+            ])
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error('❌ Error creando perfil automáticamente:', insertError);
+            return null;
+        }
+        
+        console.log('✅ Perfil creado automáticamente:', newProfile);
+        return newProfile;
+        
+    } catch (error) {
+        console.error('❌ Error en createUserProfileFromAuth:', error);
         return null;
     }
 }
@@ -281,6 +332,17 @@ async function isUserEvaluator(userId) {
     }
 }
 
+// Verificar si el usuario es administrador
+async function isUserAdmin(userId) {
+    try {
+        const profile = await getUserProfile(userId);
+        return profile && profile.user_type === 'admin';
+    } catch (error) {
+        console.error('Error verificando rol admin:', error);
+        return false;
+    }
+}
+
 // Exportar funciones para uso global
 window.supabaseClient = {
     supabase,
@@ -294,5 +356,6 @@ window.supabaseClient = {
     getWorksForEvaluation,
     createEvaluation,
     updateWorkStatus,
-    isUserEvaluator
+    isUserEvaluator,
+    isUserAdmin
 };

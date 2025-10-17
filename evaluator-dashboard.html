@@ -281,76 +281,119 @@
         }
 
 // Cargar trabajos para evaluación - VERSIÓN MEJORADA CON DIAGNÓSTICO
+// Cargar trabajos asignados al evaluador actual
 async function loadEvaluatorWorks() {
     try {
-        console.log('🔍 INICIANDO DIAGNÓSTICO...');
+        console.log('🔍 Cargando trabajos asignados...');
         
-        // 1. Verificar autenticación
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-            console.error('❌ Error de sesión:', sessionError);
-            throw sessionError;
-        }
-        
-        if (!session) {
-            console.error('❌ No hay sesión activa');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
             window.location.href = 'login.html';
             return;
         }
+
+        console.log('👤 Evaluador:', user.id);
         
-        console.log('✅ Sesión activa:', session.user.id);
+        // Usar el sistema de asignaciones
+        const assignmentSystem = new EvaluationAssignment();
+        const assignedWorks = await assignmentSystem.getAssignedWorks(user.id);
         
-        // 2. Verificar perfil de evaluador
-        const profile = await getUserProfile(session.user.id);
-        console.log('📋 Perfil del usuario:', profile);
+        console.log('📋 Trabajos asignados:', assignedWorks);
         
-        if (!profile || (profile.user_type !== 'evaluator' && profile.user_type !== 'admin')) {
-            console.error('❌ Usuario no es evaluador. Tipo:', profile?.user_type);
-            alert('No tienes permisos de evaluador. Redirigiendo...');
-            window.location.href = 'student-dashboard.html';
-            return;
-        }
-        
-        console.log('✅ Usuario confirmado como evaluador');
-        
-        // 3. Intentar cargar trabajos
-        console.log('📥 Ejecutando consulta de trabajos...');
-        const works = await getWorksForEvaluation();
-        console.log('📊 Resultado de la consulta:', works);
-        
-        if (!works || works.length === 0) {
-            console.warn('⚠️ No se encontraron trabajos. Posibles causas:');
-            console.warn('   - No hay trabajos en la base de datos');
-            console.warn('   - Problema con políticas RLS');
-            console.warn('   - Error en la consulta SQL');
-        }
+        // Transformar datos para compatibilidad
+        const works = assignedWorks.map(assignment => ({
+            ...assignment.works,
+            assignment_id: assignment.id,
+            assignment_status: assignment.status
+        }));
         
         allWorks = works;
         updateStatistics(works);
-        displayWorks(works);
-        
-        console.log('✅ Carga completada');
+        displayAssignedWorks(works);
         
     } catch (error) {
-        console.error('❌ Error completo en loadEvaluatorWorks:', error);
-        showError('Error cargando trabajos: ' + error.message);
-        
-        // Mostrar información detallada del error
-        const worksContainer = document.getElementById('worksList');
-        if (worksContainer) {
-            worksContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    <h5>❌ Error al cargar trabajos</h5>
-                    <p><strong>Mensaje:</strong> ${error.message}</p>
-                    <p><strong>Acción:</strong> Verifica la consola del navegador (F12) para más detalles.</p>
-                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadEvaluatorWorks()">
-                        Reintentar
-                    </button>
-                </div>
-            `;
-        }
+        console.error('❌ Error cargando trabajos asignados:', error);
+        showError('Error cargando trabajos asignados: ' + error.message);
     }
 }
+
+
+// Mostrar trabajos asignados (nueva función)
+function displayAssignedWorks(works) {
+    const worksContainer = document.getElementById('worksList');
+    if (!worksContainer) return;
+    
+    if (!works || works.length === 0) {
+        worksContainer.innerHTML = `
+            <div class="text-center py-5">
+                <div class="text-muted">
+                    <p class="h3">📝</p>
+                    <p class="h5">No hay trabajos asignados</p>
+                    <p class="mb-0">Los trabajos se asignan automáticamente cuando los estudiantes los envían</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    worksContainer.innerHTML = works.map(work => {
+        const statusInfo = getStatusInfo(work.status);
+        const assignmentStatus = getAssignmentStatusInfo(work.assignment_status);
+        const studentName = work.user_profiles ? work.user_profiles.name : 'Estudiante';
+        const daysAgo = getDaysAgo(work.submitted_at);
+        
+        return `
+            <div class="work-item-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="card-title text-primary">${work.title}</h5>
+                            <p class="card-text mb-2">
+                                <strong>Estudiante:</strong> ${studentName}<br>
+                                <strong>Modalidad:</strong> ${work.modality === 'ponencia' ? '🎤 Ponencia' : '📊 Póster'}<br>
+                                <strong>Enviado:</strong> Hace ${daysAgo} días<br>
+                                <strong>Estado asignación:</strong> ${assignmentStatus.badge}
+                            </p>
+                            <div class="mt-3">
+                                <a href="${work.file_url}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                                    📎 Ver Archivo
+                                </a>
+                                <button class="btn btn-sm btn-success" onclick="openEvaluation('${work.id}')" 
+                                    ${work.assignment_status === 'completed' ? 'disabled' : ''}>
+                                    ${work.assignment_status === 'completed' ? '✅ Evaluado' : '⭐ Evaluar'}
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" onclick="viewAssignmentDetails('${work.assignment_id}')">
+                                    📋 Detalles Asignación
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="status-badge ${statusInfo.class}">
+                                ${statusInfo.icon} ${statusInfo.text}
+                            </span>
+                            <br>
+                            <small class="text-muted mt-2 d-block">
+                                Asignación ID: ${work.assignment_id.substring(0, 8)}...
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Información del estado de asignación
+function getAssignmentStatusInfo(status) {
+    const statusMap = {
+        'assigned': { badge: '<span class="badge bg-warning">📋 Asignado</span>', text: 'Asignado' },
+        'in_progress': { badge: '<span class="badge bg-info">🔍 En Progreso</span>', text: 'En Progreso' },
+        'completed': { badge: '<span class="badge bg-success">✅ Completado</span>', text: 'Completado' }
+    };
+    return statusMap[status] || { badge: '<span class="badge bg-secondary">❓ Desconocido</span>', text: 'Desconocido' };
+}
+
+
 
         // Actualizar estadísticas
         function updateStatistics(works) {

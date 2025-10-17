@@ -464,7 +464,7 @@ async function handleWorkSubmit(e) {
     window.location.href = 'student-dashboard.html';
 }
 
-// Verificar autenticación en páginas protegidas
+// Verificar autenticación en páginas protegidas - VERSIÓN CORREGIDA
 async function checkPageAuth() {
     const protectedPages = ['student-dashboard', 'evaluator-dashboard', 'submit-work'];
     const currentPage = window.location.pathname;
@@ -479,17 +479,37 @@ async function checkPageAuth() {
                 return false;
             }
             
-            // Verificación adicional para páginas de evaluador
+            // OBTENER EL PERFIL PRIMERO - ESTO ES CLAVE
+            const profile = await window.supabaseClient.getUserProfile(session.user.id);
+            console.log('🔍 Perfil del usuario:', profile);
+            
+            if (!profile) {
+                console.error('❌ No se pudo obtener el perfil del usuario');
+                // Redirigir a login si no hay perfil
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            // Verificación específica para panel de evaluador
             if (currentPage.includes('evaluator-dashboard')) {
-                const isEvaluator = await window.supabaseClient.isUserEvaluator(session.user.id);
+                const isEvaluator = profile.user_type === 'evaluator' || profile.user_type === 'admin';
+                console.log(`👨‍🏫 ¿Es evaluador? ${isEvaluator} (tipo: ${profile.user_type})`);
+                
                 if (!isEvaluator) {
-                    alert('❌ No tienes permisos para acceder al panel de evaluador');
+                    alert('❌ No tienes permisos para acceder al panel de evaluador. Tu cuenta es de tipo: ' + profile.user_type);
                     window.location.href = 'student-dashboard.html';
                     return false;
                 }
             }
             
+            // Verificación para panel de estudiante
+            if (currentPage.includes('student-dashboard') && profile.user_type === 'evaluator') {
+                console.log('⚠️ Evaluador intentando acceder a panel de estudiante - permitiendo');
+                // Permitimos que evaluadores vean el panel de estudiante si quieren
+            }
+            
             return true;
+            
         } catch (error) {
             console.error('Error verificando autenticación:', error);
             window.location.href = 'login.html';
