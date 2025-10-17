@@ -306,24 +306,43 @@ async function loadAllWorks() {
 // Cargar todas las asignaciones - VERSIÓN PERMANENTE CON JOINS
 async function loadAllAssignments() {
   try {
-    const { data, error } = await supabase
+    // Primero carga las asignaciones básicas
+    const { data: assignments, error } = await supabase
       .from('evaluation_assignments')
-      .select(`
-        *,
-        works(
-          id,
-          title,
-          student_id,
-          status,
-          user_profiles!user_profile_id(name)
-        ),
-        user_profiles!evaluation_assignments_evaluator_id_fkey(name, email)
-      `)
+      .select('*')
       .order('assigned_at', { ascending: false });
 
     if (error) throw error;
-    console.log('Asignaciones cargadas:', data);
-    return data;
+
+    // Luego enriquece con datos de works y user_profiles
+    const enrichedAssignments = await Promise.all(
+      assignments.map(async (assignment) => {
+        // Obtener datos del trabajo
+        const { data: workData } = await supabase
+          .from('works')
+          .select(`
+            *,
+            user_profiles!user_profile_id(name)
+          `)
+          .eq('id', assignment.work_id)
+          .single();
+
+        // Obtener datos del evaluador
+        const { data: evaluatorData } = await supabase
+          .from('user_profiles')
+          .select('name, email')
+          .eq('id', assignment.evaluator_id)
+          .single();
+
+        return {
+          ...assignment,
+          works: workData,
+          user_profiles: evaluatorData
+        };
+      })
+    );
+
+    return enrichedAssignments;
   } catch (error) {
     console.error('Error cargando asignaciones:', error);
     throw error;
