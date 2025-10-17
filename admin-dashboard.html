@@ -417,68 +417,85 @@ async function loadAllWorks() {
         }
 
         // FUNCIÓN PRINCIPAL: Asignar todos los trabajos pendientes
-        async function assignAllPendingWorks() {
-            try {
-                if (pendingWorks.length === 0) {
-                    alert('✅ No hay trabajos pendientes para asignar');
-                    return;
-                }
-                
-                // Mostrar modal de progreso
-                document.getElementById('progressModalTitle').textContent = 'Asignando Trabajos';
-                document.getElementById('progressMessage').textContent = `Procesando ${pendingWorks.length} trabajos...`;
-                progressModal.show();
-                
-                let assignedCount = 0;
-                let errorCount = 0;
-                
-                // Asignar cada trabajo pendiente
-                for (let i = 0; i < pendingWorks.length; i++) {
-                    const work = pendingWorks[i];
-                    
-                    // Actualizar progreso
-                    const progress = ((i + 1) / pendingWorks.length) * 100;
-                    document.getElementById('assignmentProgress').style.width = `${progress}%`;
-                    document.getElementById('progressMessage').textContent = 
-                        `Asignando: "${work.title}" (${i + 1}/${pendingWorks.length})`;
-                    
-                    try {
-                        const result = await assignmentSystem.assignWorksToEvaluators(work.id, 3);
-                        
-                        if (result.success) {
-                            assignedCount++;
-                            console.log(`✅ Trabajo asignado: ${work.title}`);
-                        } else {
-                            errorCount++;
-                            console.error(`❌ Error asignando trabajo: ${work.title}`, result.error);
-                        }
-                    } catch (error) {
-                        errorCount++;
-                        console.error(`❌ Error asignando trabajo: ${work.title}`, error);
-                    }
-                    
-                    // Pequeña pausa para no saturar
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-                
-                // Cerrar modal y mostrar resultados
-                progressModal.hide();
-                
-                if (errorCount === 0) {
-                    alert(`✅ ¡Éxito! Se asignaron ${assignedCount} trabajos a los evaluadores.`);
-                } else {
-                    alert(`⚠️ Se asignaron ${assignedCount} trabajos, pero hubo ${errorCount} errores. Revisa la consola para más detalles.`);
-                }
-                
-                // Recargar datos
-                await loadAdminDashboard();
-                
-            } catch (error) {
-                console.error('❌ Error en asignación masiva:', error);
-                progressModal.hide();
-                alert('❌ Error durante la asignación: ' + error.message);
-            }
+// FUNCIÓN PRINCIPAL: Asignar todos los trabajos pendientes - VERSIÓN CORREGIDA
+async function assignAllPendingWorks() {
+    try {
+        if (pendingWorks.length === 0) {
+            alert('✅ No hay trabajos pendientes para asignar');
+            return;
         }
+        
+        // Mostrar modal de progreso
+        document.getElementById('progressModalTitle').textContent = 'Asignando Trabajos';
+        document.getElementById('progressMessage').textContent = `Procesando ${pendingWorks.length} trabajos...`;
+        progressModal.show();
+        
+        let assignedCount = 0;
+        let errorCount = 0;
+        
+        // Asignar cada trabajo pendiente
+        for (let i = 0; i < pendingWorks.length; i++) {
+            const work = pendingWorks[i];
+            
+            // Actualizar progreso
+            const progress = ((i + 1) / pendingWorks.length) * 100;
+            document.getElementById('assignmentProgress').style.width = `${progress}%`;
+            document.getElementById('progressMessage').textContent = 
+                `Asignando: "${work.title}" (${i + 1}/${pendingWorks.length})`;
+            
+            try {
+                const result = await assignmentSystem.assignWorksToEvaluators(work.id, 3);
+                
+                // VERIFICACIÓN MEJORADA: Considerar éxito si se crearon asignaciones
+                if (result.success || (result.assignments && result.assignments.length > 0)) {
+                    assignedCount++;
+                    console.log(`✅ Trabajo asignado: ${work.title} - ${result.assignments?.length || 'algunas'} asignaciones creadas`);
+                } else {
+                    errorCount++;
+                    console.error(`❌ Error asignando trabajo: ${work.title}`, result.error);
+                }
+            } catch (error) {
+                errorCount++;
+                console.error(`❌ Error asignando trabajo: ${work.title}`, error);
+            }
+            
+            // Pequeña pausa para no saturar
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Cerrar modal y mostrar resultados
+        progressModal.hide();
+        
+        // VERIFICACIÓN FINAL: Comprobar en la base de datos
+        const { data: finalAssignments } = await supabase
+            .from('evaluation_assignments')
+            .select('id')
+            .not('id', 'is', null);
+            
+        const { data: updatedWorks } = await supabase
+            .from('works')
+            .select('id, status')
+            .in('id', pendingWorks.map(w => w.id));
+        
+        const actuallyAssigned = updatedWorks?.filter(w => w.status === 'under_review').length || 0;
+        
+        if (actuallyAssigned > 0) {
+            alert(`✅ ¡Éxito! Se asignaron ${actuallyAssigned} trabajos a los evaluadores.`);
+        } else if (errorCount === 0) {
+            alert(`✅ No había trabajos pendientes para asignar.`);
+        } else {
+            alert(`⚠️ Se intentaron asignar ${pendingWorks.length} trabajos. ${assignedCount} exitosos, ${errorCount} errores.`);
+        }
+        
+        // Recargar datos
+        await loadAdminDashboard();
+        
+    } catch (error) {
+        console.error('❌ Error en asignación masiva:', error);
+        progressModal.hide();
+        alert('❌ Error durante la asignación: ' + error.message);
+    }
+}
         
         // Reasignar todos los trabajos
         async function reassignAllWorks() {
