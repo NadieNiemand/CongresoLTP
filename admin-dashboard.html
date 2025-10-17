@@ -282,34 +282,26 @@
             showError('assignmentsList', 'Error: ' + error.message);
         }
     }
-        
-        // Cargar todos los trabajos
-// Cargar todos los trabajos - VERSIÓN PERMANENTE CON JOINS
+
+// Cargar trabajos con información de user_profiles
 async function loadAllWorks() {
-    try {
-        // ✅ CONSULTA CON JOIN (funciona después de crear las foreign keys)
-        const { data: works, error } = await supabase
-            .from('works')
-            .select(`
-                *,
-                user_profiles!works_student_id_fkey (
-                    name,
-                    email
-                )
-            `)
-            .order('submitted_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        allWorks = works || [];
-        pendingWorks = allWorks.filter(work => work.status === 'pending');
-        
-        displayPendingWorks();
-        
-    } catch (error) {
-        console.error('Error cargando trabajos:', error);
-        throw error;
-    }
+  try {
+    const { data, error } = await supabase
+      .from('works')
+      .select(`
+        *,
+        user_profiles!user_profile_id (*)
+      `);
+    
+    if (error) throw error;
+    
+    // Aquí procesas los datos
+    console.log('Trabajos cargados:', data);
+    return data;
+    
+  } catch (error) {
+    console.error('Error cargando trabajos:', error);
+  }
 }
         
         // Cargar todas las asignaciones
