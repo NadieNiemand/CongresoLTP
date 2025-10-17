@@ -48,15 +48,7 @@
                                 <label for="confirmPassword" class="form-label">Confirmar Contraseña *</label>
                                 <input type="password" class="form-control" id="confirmPassword" placeholder="••••••••" required>
                             </div>
-                  
-                            <!-- Campo para código de evaluador -->
-                            <div class="mb-3" id="evaluatorCodeField" style="display: none;">
-                                <label for="evaluatorCode" class="form-label">Código de Evaluador *</label>
-                                <input type="text" class="form-control" id="evaluatorCode" 
-                                       placeholder="Ingresa 'Zaragoza123' para registrarte como evaluador">
-                                <div class="form-text">Solo necesario para registrarse como evaluador</div>
-                            </div>
-
+                            
                             <div class="alert alert-info">
                                 <strong>ℹ️ Información importante:</strong><br>
                                 • Los evaluadores deben ser aprobados por el comité organizador<br>
@@ -84,30 +76,15 @@
     <!-- Incluir Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js"></script>
-    
     <script>
-        // Mostrar/ocultar campo de código según tipo de usuario
-        document.getElementById('userType').addEventListener('change', function() {
-            const codeField = document.getElementById('evaluatorCodeField');
-            const isEvaluator = this.value === 'evaluator';
-            
-            codeField.style.display = isEvaluator ? 'block' : 'none';
-            
-            // Hacer requerido o no el campo de código
-            const codeInput = document.getElementById('evaluatorCode');
-            if (codeInput) {
-                codeInput.required = isEvaluator;
+        // Manejar el registro de usuarios
+        document.addEventListener('DOMContentLoaded', function() {
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', handleRegister);
             }
         });
 
-        // Función para validar el código de evaluador
-        function validateEvaluatorCode(code) {
-            // Código fijo "Zaragoza123"
-            const validCode = 'Zaragoza123';
-            return code === validCode;
-        }
-
-        // Manejar el registro con validación de código
         async function handleRegister(e) {
             e.preventDefault();
             
@@ -116,11 +93,9 @@
             const userType = document.getElementById('userType').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            const evaluatorCode = userType === 'evaluator' ? document.getElementById('evaluatorCode').value : null;
             
             const registerText = document.getElementById('registerText');
             const registerSpinner = document.getElementById('registerSpinner');
-            const submitButton = document.querySelector('button[type="submit"]');
             
             // Validaciones básicas
             if (password !== confirmPassword) {
@@ -138,28 +113,15 @@
                 return;
             }
             
-            // Validación especial para evaluadores
-            if (userType === 'evaluator') {
-                if (!evaluatorCode || evaluatorCode.trim() === '') {
-                    alert('❌ Los evaluadores deben proporcionar el código de acceso');
-                    return;
-                }
-                
-                if (!validateEvaluatorCode(evaluatorCode.trim())) {
-                    alert('❌ Código de evaluador incorrecto. Usa: Zaragoza123');
-                    return;
-                }
-            }
-            
             // Mostrar loading
             registerText.textContent = 'Creando cuenta...';
             registerSpinner.classList.remove('d-none');
-            submitButton.disabled = true;
+            document.querySelector('button[type="submit"]').disabled = true;
             
             try {
-                console.log('📝 Iniciando registro...', { email, name, userType });
+                console.log('📝 Intentando registrar usuario:', { email, name, userType });
                 
-                // Registrar usuario
+                // Usar la función de registro que ya está en supabase-client.js
                 const result = await registerUser(email, password, name, userType);
                 
                 if (result.success) {
@@ -180,7 +142,7 @@
                 console.error('❌ Error en registro:', error);
                 registerText.textContent = 'Crear Cuenta';
                 registerSpinner.classList.add('d-none');
-                submitButton.disabled = false;
+                document.querySelector('button[type="submit"]').disabled = false;
                 
                 // Mostrar error específico
                 let errorMessage = 'Error al crear la cuenta';
@@ -197,14 +159,6 @@
                 alert('❌ ' + errorMessage);
             }
         }
-
-        // Asignar el event listener al formulario
-        document.addEventListener('DOMContentLoaded', function() {
-            const registerForm = document.getElementById('registerForm');
-            if (registerForm) {
-                registerForm.addEventListener('submit', handleRegister);
-            }
-        });
     </script>
 </body>
 </html>
