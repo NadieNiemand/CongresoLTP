@@ -284,44 +284,64 @@
         }
 
         // Cargar trabajos - VERSIÓN SIMPLIFICADA
-        async function loadAllWorks() {
-            try {
-                const { data, error } = await supabase
-                    .from('works')
-                    .select('*');
-                
-                if (error) throw error;
+// Cargar trabajos - VERSIÓN MEJORADA
+async function loadAllWorks() {
+    try {
+        const { data, error } = await supabase
+            .from('works')
+            .select('*');
+        
+        if (error) throw error;
 
-                // Enriquecer con datos de user_profiles
-                const enrichedWorks = await Promise.all(
-                    data.map(async (work) => {
-                        const { data: profile } = await supabase
-                            .from('user_profiles')
-                            .select('name, user_type, ems11')
-                            .eq('id', work.user_profile_id)
-                            .single();
+        // Enriquecer con datos de user_profiles, manejando casos nulos
+        const enrichedWorks = await Promise.all(
+            data.map(async (work) => {
+                if (!work.user_profile_id) {
+                    console.warn(`⚠️ Work ${work.id} tiene user_profile_id null`);
+                    return {
+                        ...work,
+                        student_name: 'Estudiante no asignado',
+                        user_type: 'desconocido',
+                        ems11: 'N/A'
+                    };
+                }
 
-                        return {
-                            ...work,
-                            student_name: profile?.name || 'Sin nombre',
-                            user_type: profile?.user_type || 'No especificado',
-                            ems11: profile?.ems11 || 'N/A'
-                        };
-                    })
-                );
+                const { data: profile, error: profileError } = await supabase
+                    .from('user_profiles')
+                    .select('name, user_type, ems11')
+                    .eq('id', work.user_profile_id)
+                    .single();
 
-                allWorks = enrichedWorks;
-                pendingWorks = allWorks.filter(work => work.status === 'pending');
-                
-                console.log('Trabajos cargados:', allWorks);
-                return allWorks;
-                
-            } catch (error) {
-                console.error('Error cargando trabajos:', error);
-                throw error;
-            }
-        }
+                if (profileError) {
+                    console.warn(`⚠️ Error cargando perfil para work ${work.id}:`, profileError);
+                    return {
+                        ...work,
+                        student_name: 'Error cargando perfil',
+                        user_type: 'error',
+                        ems11: 'N/A'
+                    };
+                }
 
+                return {
+                    ...work,
+                    student_name: profile?.name || 'Sin nombre',
+                    user_type: profile?.user_type || 'No especificado',
+                    ems11: profile?.ems11 || 'N/A'
+                };
+            })
+        );
+
+        allWorks = enrichedWorks;
+        pendingWorks = allWorks.filter(work => work.status === 'pending');
+        
+        console.log('Trabajos cargados:', allWorks);
+        return allWorks;
+        
+    } catch (error) {
+        console.error('Error cargando trabajos:', error);
+        throw error;
+    }
+}
         // Cargar todas las asignaciones - VERSIÓN SIMPLIFICADA
         async function loadAllAssignments() {
             try {

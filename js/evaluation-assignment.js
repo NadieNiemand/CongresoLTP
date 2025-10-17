@@ -41,22 +41,38 @@ class EvaluationAssignment {
     }
 
     // Obtener evaluadores disponibles
-    async getAvailableEvaluators() {
-        try {
-            const { data: evaluators, error } = await this.supabase
+// En evaluation-assignment.js - reemplaza la función getAvailableEvaluators
+async getAvailableEvaluators() {
+    try {
+        console.log('🔍 Buscando evaluadores disponibles...');
+        
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('id, name, email, user_type')
+            .eq('user_type', 'evaluator')
+            .not('id', 'is', null);
+
+        if (error) {
+            console.error('Error obteniendo evaluadores:', error);
+            // Si falla por is_active, intentar sin ese filtro
+            const { data: fallbackData, error: fallbackError } = await supabase
                 .from('user_profiles')
                 .select('id, name, email, user_type')
                 .eq('user_type', 'evaluator')
-                .eq('is_active', true); // Asumiendo que tienes este campo
-
-            if (error) throw error;
-
-            return evaluators || [];
-        } catch (error) {
-            console.error('Error obteniendo evaluadores:', error);
-            return [];
+                .not('id', 'is', null);
+                
+            if (fallbackError) throw fallbackError;
+            return fallbackData || [];
         }
+        
+        console.log(`✅ Encontrados ${data?.length || 0} evaluadores`);
+        return data || [];
+        
+    } catch (error) {
+        console.error('Error crítico obteniendo evaluadores:', error);
+        return [];
     }
+}
 
     // Seleccionar evaluadores aleatoriamente
     selectRandomEvaluators(evaluators, count) {
