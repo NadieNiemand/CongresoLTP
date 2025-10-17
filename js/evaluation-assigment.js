@@ -171,5 +171,24 @@ class EvaluationAssignment {
     }
 }
 
+// Funciones auxiliares globales
+function getAssignmentStatusInfo(status) {
+    const statusMap = {
+        'assigned': { badge: '<span class="badge bg-warning">📋 Asignado</span>', text: 'Asignado' },
+        'in_progress': { badge: '<span class="badge bg-info">🔍 En Progreso</span>', text: 'En Progreso' },
+        'completed': { badge: '<span class="badge bg-success">✅ Completado</span>', text: 'Completado' }
+    };
+    return statusMap[status] || { badge: '<span class="badge bg-secondary">❓ Desconocido</span>', text: 'Desconocido' };
+}
+
+function getDaysAgo(dateString) {
+    const submitted = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - submitted);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
 // Exportar para uso global
 window.EvaluationAssignment = EvaluationAssignment;
+window.getAssignmentStatusInfo = getAssignmentStatusInfo;
+window.getDaysAgo = getDaysAgo;
