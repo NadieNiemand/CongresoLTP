@@ -1,11 +1,11 @@
-// Configuración de Supabase - REEMPLAZA con tus credenciales reales
-const SUPABASE_URL = 'https://tapvkxfblkbarskdmxdo.supabase.co';  // Cambiar por tu URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcHZreGZibGtiYXJza2RteGRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzE1OTAsImV4cCI6MjA3NjAwNzU5MH0._AaRXoxSzTyY5FTpX7sD3f6WnlKiLCk1DkpixmTyP8o';           // Cambiar por tu key
+// Configuración de Supabase
+const SUPABASE_URL = 'https://tapvkxfblkbarskdmxdo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcHZreGZibGtiYXJza2RteGRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzE1OTAsImV4cCI6MjA3NjAwNzU5MH0._AaRXoxSzTyY5FTpX7sD3f6WnlKiLCk1DkpixmTyP8o';
 
 // Inicializar Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Función para login MEJORADA
+// Función para login
 async function loginUser(email, password) {
     try {
         console.log('🔐 Intentando login con:', email);
@@ -22,14 +22,13 @@ async function loginUser(email, password) {
         
         console.log('✅ Login exitoso:', data);
         
-        // Obtener el perfil del usuario (FORZAR la obtención)
+        // Obtener el perfil del usuario
         let profile = null;
         try {
             profile = await getUserProfile(data.user.id);
             console.log('📋 Perfil obtenido:', profile);
         } catch (profileError) {
             console.warn('⚠️ No se pudo obtener el perfil:', profileError);
-            // Continuar sin perfil
         }
         
         return { 
@@ -48,6 +47,7 @@ async function loginUser(email, password) {
         };
     }
 }
+
 // Obtener perfil del usuario
 async function getUserProfile(userId) {
     try {
@@ -69,10 +69,13 @@ async function getUserProfile(userId) {
     }
 }
 
-// Función para registrar nuevo usuario
+// Función MEJORADA para registrar nuevo usuario
 async function registerUser(email, password, name, userType) {
     try {
-        const { data, error } = await supabase.auth.signUp({
+        console.log('👤 Registrando usuario:', { email, name, userType });
+        
+        // 1. Registrar usuario en Auth de Supabase
+        const { data: authData, error: authError } = await supabase.auth.signUp({
             email: email,
             password: password,
             options: {
@@ -83,27 +86,63 @@ async function registerUser(email, password, name, userType) {
             }
         });
         
-        if (error) throw error;
-        
-        // Crear perfil de usuario
-        if (data.user) {
-            const { error: profileError } = await supabase
-                .from('user_profiles')
-                .insert([
-                    {
-                        id: data.user.id,
-                        email: email,
-                        name: name,
-                        user_type: userType
-                    }
-                ]);
-            
-            if (profileError) throw profileError;
+        if (authError) {
+            console.error('❌ Error en registro Auth:', authError);
+            throw authError;
         }
+
+        if (!authData.user) {
+            throw new Error('No se pudo crear el usuario');
+        }
+
+        console.log('✅ Usuario creado en Auth:', authData.user.id);
+
+        // 2. Esperar un momento para asegurar que el usuario esté creado
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 3. Crear perfil en la tabla user_profiles
+        const { data: profileData, error: profileError } = await supabase
+            .from('user_profiles')
+            .insert([
+                {
+                    id: authData.user.id,
+                    email: email,
+                    name: name,
+                    user_type: userType,
+                    created_at: new Date().toISOString()
+                }
+            ])
+            .select();
+
+        if (profileError) {
+            console.error('❌ Error creando perfil:', profileError);
+            
+            // Si falla crear el perfil, intentar eliminar el usuario de auth
+            try {
+                await supabase.auth.admin.deleteUser(authData.user.id);
+            } catch (deleteError) {
+                console.error('Error eliminando usuario:', deleteError);
+            }
+            
+            throw profileError;
+        }
+
+        console.log('✅ Perfil de usuario creado exitosamente:', profileData);
         
-        return { success: true, data };
+        return { 
+            success: true, 
+            data: {
+                user: authData.user,
+                profile: profileData[0]
+            }
+        };
+        
     } catch (error) {
-        return { success: false, error: error.message };
+        console.error('❌ Error completo en registro:', error);
+        return { 
+            success: false, 
+            error: error.message 
+        };
     }
 }
 
@@ -128,7 +167,7 @@ async function logoutUser() {
     return true;
 }
 
-// Obtener trabajos del alumno (REAL)
+// Obtener trabajos del alumno
 async function getStudentWorks(studentId) {
     try {
         const { data, error } = await supabase
@@ -145,13 +184,12 @@ async function getStudentWorks(studentId) {
     }
 }
 
-// Función MEJORADA para obtener trabajos para evaluación
-// Función CORREGIDA para obtener trabajos para evaluación
+// Función para obtener trabajos para evaluación
 async function getWorksForEvaluation() {
     try {
         console.log('🔍 Ejecutando consulta CORREGIDA...');
         
-        // PRIMERO: Probar una consulta simple sin relaciones
+        // Consulta simple sin relaciones
         const { data: simpleData, error: simpleError } = await supabase
             .from('works')
             .select('*')
@@ -179,7 +217,6 @@ async function getWorksForEvaluation() {
                 
             if (profileError) {
                 console.error('❌ Error obteniendo perfiles:', profileError);
-                // Continuar sin los nombres de estudiantes
             }
             
             // Combinar los datos
@@ -206,7 +243,7 @@ async function getWorksForEvaluation() {
     }
 }
 
-// Enviar nuevo trabajo (REAL)
+// Enviar nuevo trabajo
 async function submitWork(workData) {
     try {
         const { data, error } = await supabase
@@ -237,8 +274,7 @@ async function getWorkEvaluations(workId) {
     }
 }
 
-
-// Función ACTUALIZADA para crear evaluación
+// Función para crear evaluación
 async function createEvaluation(evaluationData) {
     try {
         console.log('💾 Guardando evaluación en la base de datos...');
@@ -261,86 +297,6 @@ async function createEvaluation(evaluationData) {
     }
 }
 
-// Funciones para gestión de códigos de invitación
-
-// Validar código de invitación
-async function validateInvitationCode(code) {
-    try {
-        // Limpiar el código (quitar guiones si los tiene)
-        const cleanCode = code.replace(/-/g, '').toUpperCase();
-        
-        console.log('🔍 Validando código:', cleanCode);
-        
-        const { data, error } = await supabase
-            .from('invitation_codes')
-            .select('*')
-            .eq('code', cleanCode)
-            .eq('is_active', true)
-            .gte('expires_at', new Date().toISOString())
-            .is('used_by', null)
-            .single();
-        
-        if (error) {
-            console.error('❌ Error validando código:', error);
-            return { 
-                valid: false, 
-                error: 'Código no encontrado o ya utilizado' 
-            };
-        }
-        
-        if (!data) {
-            return { 
-                valid: false, 
-                error: 'Código inválido, expirado o ya utilizado' 
-            };
-        }
-        
-        console.log('✅ Código válido encontrado:', data);
-        return { 
-            valid: true, 
-            codeData: data 
-        };
-        
-    } catch (error) {
-        console.error('❌ Error en validateInvitationCode:', error);
-        return { 
-            valid: false, 
-            error: 'Error validando el código de invitación' 
-        };
-    }
-}
-
-// Marcar código como usado
-async function markInvitationCodeAsUsed(code, userId) {
-    try {
-        const cleanCode = code.replace(/-/g, '').toUpperCase();
-        
-        console.log('📝 Marcando código como usado:', cleanCode, 'por usuario:', userId);
-        
-        const { error } = await supabase
-            .from('invitation_codes')
-            .update({ 
-                used_by: userId,
-                used_at: new Date().toISOString()
-            })
-            .eq('code', cleanCode)
-            .eq('is_active', true)
-            .is('used_by', null);
-        
-        if (error) {
-            console.error('❌ Error marcando código como usado:', error);
-            throw error;
-        }
-        
-        console.log('✅ Código marcado como usado exitosamente');
-        return { success: true };
-        
-    } catch (error) {
-        console.error('❌ Error en markInvitationCodeAsUsed:', error);
-        throw error;
-    }
-}
-
 // Obtener códigos de invitación (para admin)
 async function getInvitationCodes() {
     try {
@@ -360,4 +316,3 @@ async function getInvitationCodes() {
         return [];
     }
 }
-

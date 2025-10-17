@@ -30,9 +30,7 @@
                     </div>
                     <div class="card-body">
                         <div class="list-group list-group-flush">
-                            <a href="#invitationCodes" class="list-group-item list-group-item-action active" data-bs-toggle="tab">
-                                📧 Códigos de Invitación
-                            </a>
+                            
                             <a href="#workAssignments" class="list-group-item list-group-item-action" data-bs-toggle="tab">
                                 👥 Asignar Evaluadores
                             </a>
@@ -43,50 +41,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Contenido -->
-            <div class="col-lg-9">
-                <div class="tab-content">
-                    <!-- Códigos de Invitación -->
-                    <div class="tab-pane fade show active" id="invitationCodes">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">Generar Códigos de Invitación</h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="generateCodeForm">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <label class="form-label">Número de códigos</label>
-                                            <input type="number" class="form-control" id="codeCount" min="1" max="50" value="5">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">Días de validez</label>
-                                            <input type="number" class="form-control" id="validityDays" min="1" max="365" value="30">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">&nbsp;</label>
-                                            <button type="submit" class="btn btn-primary w-100">Generar Códigos</button>
-                                        </div>
-                                    </div>
-                                </form>
-                                
-                                <div class="mt-4">
-                                    <h6>Códigos Generados</h6>
-                                    <div id="generatedCodes" class="bg-light p-3 rounded">
-                                        <!-- Los códigos aparecerán aquí -->
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-4">
-                                    <h6>Códigos Activos</h6>
-                                    <div id="activeCodesList">
-                                        <!-- Lista de códigos activos -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Asignar Evaluadores -->
                     <div class="tab-pane fade" id="workAssignments">
@@ -140,7 +94,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-client.js"></script>
     <script>
-    // Verificar autenticación y permisos de administrador
+  
 // Verificar autenticación y permisos de administrador - VERSIÓN MEJORADA
 async function checkAdminAuth() {
     try {
@@ -191,187 +145,6 @@ async function checkAdminAuth() {
         alert('Error verificando permisos: ' + error.message);
         window.location.href = 'login.html';
         return false;
-    }
-}
-
-// Generar códigos de invitación
-document.getElementById('generateCodeForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const codeCount = parseInt(document.getElementById('codeCount').value);
-    const validityDays = parseInt(document.getElementById('validityDays').value);
-    
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    const originalText = submitButton.innerHTML;
-    
-    try {
-        submitButton.innerHTML = 'Generando...';
-        submitButton.disabled = true;
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Usuario no autenticado');
-
-        // Generar códigos
-        const codes = [];
-        for (let i = 0; i < codeCount; i++) {
-            const code = generateRandomCode(12);
-            codes.push(code);
-        }
-
-        // Calcular fecha de expiración
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + validityDays);
-
-        // Insertar códigos en la base de datos
-        const codeInserts = codes.map(code => ({
-            code,
-            created_by: user.id,
-            expires_at: expiresAt.toISOString(),
-            is_active: true
-        }));
-
-        const { data, error } = await supabase
-            .from('invitation_codes')
-            .insert(codeInserts)
-            .select();
-
-        if (error) throw error;
-
-        // Mostrar códigos generados
-        displayGeneratedCodes(codes);
-        
-        // Recargar lista de códigos activos
-        await loadActiveCodes();
-        
-        alert(`✅ ${codeCount} códigos generados exitosamente`);
-
-    } catch (error) {
-        console.error('Error generando códigos:', error);
-        alert('❌ Error generando códigos: ' + error.message);
-    } finally {
-        submitButton.innerHTML = originalText;
-        submitButton.disabled = false;
-    }
-});
-
-// Función para generar código aleatorio
-function generateRandomCode(length) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    // Formato: XXX-XXX-XXX
-    return result.replace(/(\w{4})(\w{4})(\w{4})/, '$1-$2-$3');
-}
-
-// Mostrar códigos generados
-function displayGeneratedCodes(codes) {
-    const container = document.getElementById('generatedCodes');
-    const codesHTML = codes.map(code => `
-        <div class="alert alert-success d-flex justify-content-between align-items-center">
-            <code class="fs-6">${code}</code>
-            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${code}')">
-                📋 Copiar
-            </button>
-        </div>
-    `).join('');
-    
-    container.innerHTML = codesHTML;
-}
-
-// Copiar código al portapapeles
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text.replace(/-/g, '')).then(() => {
-        alert('✅ Código copiado al portapapeles: ' + text);
-    });
-}
-
-// Cargar códigos activos
-async function loadActiveCodes() {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        const { data, error } = await supabase
-            .from('invitation_codes')
-            .select(`
-                *,
-                user_profiles!created_by (name),
-                used_profiles:user_profiles!used_by (name)
-            `)
-            .eq('is_active', true)
-            .gte('expires_at', new Date().toISOString())
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const container = document.getElementById('activeCodesList');
-        
-        if (!data || data.length === 0) {
-            container.innerHTML = '<div class="alert alert-info">No hay códigos activos.</div>';
-            return;
-        }
-
-        container.innerHTML = data.map(code => `
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="card-title">
-                                <code>${code.code}</code>
-                                ${code.used_by ? 
-                                    '<span class="badge bg-success ms-2">Usado</span>' : 
-                                    '<span class="badge bg-warning ms-2">Disponible</span>'
-                                }
-                            </h6>
-                            <p class="card-text mb-1">
-                                <small class="text-muted">
-                                    Creado por: ${code.user_profiles?.name || 'N/A'}<br>
-                                    Expira: ${new Date(code.expires_at).toLocaleDateString()}
-                                </small>
-                            </p>
-                        </div>
-                        <div class="col-md-6 text-end">
-                            ${code.used_by ? `
-                                <p class="mb-1">
-                                    <small>Usado por: ${code.used_profiles?.name || 'N/A'}</small>
-                                </p>
-                            ` : `
-                                <button class="btn btn-sm btn-outline-danger" onclick="deactivateCode('${code.id}')">
-                                    🗑️ Desactivar
-                                </button>
-                            `}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error cargando códigos activos:', error);
-        document.getElementById('activeCodesList').innerHTML = 
-            '<div class="alert alert-danger">Error cargando códigos activos</div>';
-    }
-}
-
-// Desactivar código
-async function deactivateCode(codeId) {
-    if (!confirm('¿Estás seguro de que quieres desactivar este código?')) return;
-
-    try {
-        const { error } = await supabase
-            .from('invitation_codes')
-            .update({ is_active: false })
-            .eq('id', codeId);
-
-        if (error) throw error;
-
-        alert('✅ Código desactivado exitosamente');
-        await loadActiveCodes();
-        
-    } catch (error) {
-        console.error('Error desactivando código:', error);
-        alert('❌ Error desactivando código: ' + error.message);
     }
 }
 
