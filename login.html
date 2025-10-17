@@ -183,9 +183,12 @@
                 // Determinar redirección basada en el tipo de usuario
                 const userType = result.data.profile?.user_type || determineUserType(email);
                 console.log('📍 Redirigiendo a:', userType);
-                
+
                 setTimeout(() => {
-                    if (userType === 'evaluator' || userType === 'admin') {
+                    if (userType === 'admin') {
+                    // Si tienes admin-dashboard.html, redirige allí
+                        window.location.href = 'admin-dashboard.html';
+                    } else if (userType === 'evaluator') {
                         window.location.href = 'evaluator-dashboard.html';
                     } else {
                         window.location.href = 'student-dashboard.html';
@@ -202,15 +205,20 @@
         }
     }
 
-    // Determinar tipo de usuario por email
-    function determineUserType(email) {
-        if (email.includes('profesor') || email.includes('evaluador') || 
-            email.includes('comite') || email.includes('admin') ||
-            email.includes('professor') || email.includes('teacher')) {
-            return 'evaluator';
-        }
+    // Determinar tipo de usuario por email - VERSIÓN MEJORADA
+function determineUserType(email) {
+    const emailLower = email.toLowerCase();
+    
+    if (emailLower.includes('admin') || emailLower.includes('administrador')) {
+        return 'admin';
+    } else if (emailLower.includes('profesor') || emailLower.includes('evaluador') || 
+               emailLower.includes('comite') || emailLower.includes('professor') || 
+               emailLower.includes('teacher') || emailLower.includes('evaluator')) {
+        return 'evaluator';
+    } else {
         return 'student';
     }
+}
 
     // Resetear botón de login
     function resetLoginButton(textElement, spinnerElement, buttonElement) {
