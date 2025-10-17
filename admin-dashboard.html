@@ -302,40 +302,33 @@ async function loadAllWorks() {
     console.error('Error cargando trabajos:', error);
   }
 }
-        
-        // Cargar todas las asignaciones
+
 // Cargar todas las asignaciones - VERSIÓN PERMANENTE CON JOINS
 async function loadAllAssignments() {
-    try {
-        // ✅ CONSULTA CON JOINS (funciona después de crear las foreign keys)
-        const { data: assignments, error } = await supabase
-            .from('evaluation_assignments')
-            .select(`
-                *,
-                works (
-                    id,
-                    title,
-                    student_id,
-                    status,
-                    user_profiles!works_student_id_fkey (name)
-                ),
-                user_profiles!evaluation_assignments_evaluator_id_fkey (
-                    name,
-                    email
-                )
-            `)
-            .order('assigned_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        displayAllAssignments(assignments || []);
-        
-    } catch (error) {
-        console.error('Error cargando asignaciones:', error);
-        throw error;
-    }
+  try {
+    const { data, error } = await supabase
+      .from('evaluation_assignments')
+      .select(`
+        *,
+        works(
+          id,
+          title,
+          student_id,
+          status,
+          user_profiles!user_profile_id(name)
+        ),
+        user_profiles!evaluation_assignments_evaluator_id_fkey(name, email)
+      `)
+      .order('assigned_at', { ascending: false });
+
+    if (error) throw error;
+    console.log('Asignaciones cargadas:', data);
+    return data;
+  } catch (error) {
+    console.error('Error cargando asignaciones:', error);
+    throw error;
+  }
 }
-        
         // Cargar evaluadores
     async function loadEvaluators() {
         try {
